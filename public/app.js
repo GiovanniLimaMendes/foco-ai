@@ -2,6 +2,7 @@ import { storage } from './storage.js';
 import { $, $$, escapeHtml, showToast, motion } from './ui.js';
 import { initReading } from './reading.js';
 import { initAI } from './ai.js';
+import { initExecutive } from './executive.js';
 
 if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('/service-worker.js').catch(() => {}));
 
@@ -174,6 +175,12 @@ window.addEventListener('foco:add-thing', event => {
   save(); renderIdeas(); renderPreview(); invalidateSuggestion();
   showToast('Guardado em Minhas coisas.');
 });
+window.addEventListener('foco:patch-thing', event => {
+  const { id, patch } = event.detail || {};
+  const item = ideas.find(idea => idea.id === id);
+  if (!item || !patch || typeof patch !== 'object') return;
+  Object.assign(item, patch); save(); renderIdeas(); renderPreview(); invalidateSuggestion();
+});
 $$('.filter').forEach(btn=>btn.addEventListener('click',()=> {
   filter=btn.dataset.filter;
   $$('.filter').forEach(x=> {x.classList.toggle('active',x===btn); x.setAttribute('aria-pressed',String(x===btn));}); renderIdeas();
@@ -233,4 +240,4 @@ $('#startSuggestion').addEventListener('click',()=> {
   showToast('Você deu um começo. Pode seguir no seu ritmo.');
   $('#startSuggestion').textContent='Começo registrado ✓'; $('#startSuggestion').disabled=true;
 });
-renderIdeas(); renderPreview(); renderEnergy(); initReading(); initAI(); switchView(location.hash.slice(1),false);
+renderIdeas(); renderPreview(); renderEnergy(); initReading(); initAI(); initExecutive(); switchView(location.hash.slice(1),false);

@@ -13,7 +13,7 @@
   <div class="app-shell">
     <aside class="sidebar">
       <div class="brand">
-        <div class="brand-mark">F</div>
+        <img class="brand-logo" src="foco-ai-logo.png" alt="Foco AI" />
         <div>
           <strong>Foco</strong>
           <span>seu assistente</span>
@@ -38,7 +38,7 @@
     <main class="main" id="main" tabindex="-1">
       <header class="mobile-header">
         <div class="brand">
-          <div class="brand-mark">F</div>
+          <img class="brand-logo" src="foco-ai-logo.png" alt="Foco AI" />
           <strong>Foco</strong>
         </div>
       <button class="ghost-btn theme-toggle" aria-pressed="false">Modo escuro</button></header>
@@ -74,7 +74,7 @@
               <p class="muted">O Foco olha para o que você quer fazer e sugere uma próxima ação pequena.</p>
             </div>
           </div>
-          <button class="primary-btn" id="helpMe">ME AJUDA <span>→</span></button>
+          <button class="primary-btn" id="stuckButton">ESTOU TRAVADO <span>→</span></button>
         </div>
 
         <div id="suggestionPanel" class="suggestion-panel hidden">
@@ -123,6 +123,12 @@
             <div id="ideaPreview" class="idea-preview"></div>
           </section>
         </div>
+        <div class="executive-grid">
+          <section class="section-card"><p class="card-label">MINHA CONSTELAÇÃO</p><div id="constellation" class="constellation" aria-live="polite"></div><div class="setting-line"><span id="xpTotal">0 XP</span><button class="text-btn" data-view-target="ideas">Ver minhas coisas</button></div></section>
+          <section class="section-card stack"><p class="card-label">UMA COISA PARA AMANHÃ</p><p id="tomorrowSaved" class="muted">Nada definido. Tudo bem.</p><label for="tomorrowIntention">Intenção</label><input id="tomorrowIntention" maxlength="180" placeholder="Ex.: abrir o projeto por 10 minutos" /><div class="context-row"><label>Quando<input id="tomorrowWhen" maxlength="100" placeholder="Quando chegar em casa" /></label><label>Onde<input id="tomorrowWhere" maxlength="100" placeholder="Na mesa" /></label></div><button id="saveTomorrow" class="secondary-btn">Guardar para amanhã</button></section>
+        </div>
+        <section class="section-card stack brain-dump"><p class="card-label">BRAIN DUMP</p><h2>Tira isso da cabeça por um minuto.</h2><textarea id="brainDumpText" rows="4" maxlength="4000" placeholder="Ideias, lembretes, vontades, preocupações… Nada vira obrigação sozinho."></textarea><div class="button-row"><button id="organizeDump" class="secondary-btn">Organizar para eu revisar</button><button id="saveDumpChoices" class="primary-btn">Guardar escolhas</button></div><div id="dumpReview" class="stack" aria-live="polite"></div></section>
+        <section class="section-card settings-card"><p class="card-label">PREFERÊNCIAS</p><label class="toggle-row"><input id="gamificationToggle" type="checkbox" /> Gamificação gentil</label><label class="toggle-row"><input id="celebrationToggle" type="checkbox" /> Pequenas celebrações</label><label class="toggle-row"><input id="hideStarsToggle" type="checkbox" /> Esconder detalhes nas estrelas</label></section>
       </section>
 
       <section id="ideasView" class="view">
@@ -257,6 +263,9 @@
   </dialog>
 
   <div id="storageWarning" class="storage-warning hidden" role="alert"></div>
+  <dialog id="stuckDialog" class="modal-dialog executive-dialog" aria-labelledby="stuckTitle"><div class="stack"><div class="modal-head"><h2 id="stuckTitle">Vamos descobrir só o próximo passo.</h2><button class="icon-btn" data-close-exec="#stuckDialog" aria-label="Fechar">×</button></div><div class="flow-step" data-step="energy"><p>Como está sua energia agora?</p><div class="button-row"><button data-flow-energy="low" class="secondary-btn">Baixa</button><button data-flow-energy="normal" class="secondary-btn">Média</button><button data-flow-energy="high" class="secondary-btn">Alta</button></div></div><div class="flow-step hidden" data-step="time"><p>Quanto tempo cabe agora?</p><div class="button-row"><button data-flow-time="5" class="secondary-btn">5 min</button><button data-flow-time="10" class="secondary-btn">10 min</button><button data-flow-time="15" class="secondary-btn">15 min</button><button data-flow-time="30" class="secondary-btn">30 min</button><button data-flow-time="60" class="secondary-btn">60 min</button><input id="customTime" type="number" min="1" max="180" placeholder="Outro" aria-label="Outro tempo em minutos" /></div></div><div class="flow-step hidden" data-step="preference"><p>Quer um tipo de começo?</p><div class="button-row"><button data-flow-preference="any" class="primary-btn">Pode escolher</button><button data-flow-preference="light" class="secondary-btn">Leve</button><button data-flow-preference="important" class="secondary-btn">Importante</button><button data-flow-preference="fun" class="secondary-btn">Divertido</button></div></div><div class="flow-step hidden" data-step="suggestion"><p class="card-label">UMA AÇÃO POSSÍVEL</p><h3 id="flowActionTitle"></h3><p id="flowAction"></p><p id="flowReason" class="muted"></p><div class="button-row"><button id="startFlow" class="primary-btn">Começar</button><button id="anotherAction" class="secondary-btn">Outra sugestão</button><button id="harderAction" class="text-btn">Isso ainda parece difícil</button><button id="dismissFlow" class="text-btn">Não quero agora</button></div></div></div></dialog>
+  <dialog id="focusDialog" class="modal-dialog focus-dialog" aria-labelledby="focusTitle"><div class="stack"><div class="modal-head"><p class="card-label">MODO FOCO</p><button class="icon-btn" data-close-exec="#focusDialog" aria-label="Fechar">×</button></div><h2 id="focusTitle"></h2><output id="focusTimer" class="focus-timer">10:00</output><p id="focusStatus" class="muted">Você pode pausar ou parar quando quiser.</p><label for="whereStopped">Onde parei? <input id="whereStopped" maxlength="300" placeholder="Opcional" /></label><label for="nextAfterFocus">Próximo passo <input id="nextAfterFocus" maxlength="240" placeholder="Opcional" /></label><div class="button-row"><button id="pauseFocus" class="secondary-btn">Pausar</button><button id="completeFocus" class="primary-btn">Concluir sessão</button><button id="stopFocus" class="text-btn">Parar</button></div></div></dialog>
+  <dialog id="feedbackDialog" class="modal-dialog" aria-labelledby="feedbackTitle"><div class="stack"><h2 id="feedbackTitle">Ajudou?</h2><p class="muted">Só para tornar o próximo começo mais útil.</p><div class="button-row"><button data-feedback="yes" class="primary-btn">Sim</button><button data-feedback="somewhat" class="secondary-btn">Mais ou menos</button><button data-feedback="no" class="secondary-btn">Não</button></div></div></dialog>
   <div id="toast" class="toast" role="status"></div>
   <script type="module" src="app.js"></script>
 </body>

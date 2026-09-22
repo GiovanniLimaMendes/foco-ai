@@ -27,5 +27,13 @@ export const storage = {
     memory.set(key, null);
     try { localStorage.removeItem(PREFIX + key); return true; }
     catch { warn(); return false; }
+  },
+  migrate(key, version, transform, fallback = {}) {
+    const current = this.get(key, fallback);
+    const from = Number(current?.version) || 0;
+    if (from >= version) return current;
+    const next = { ...transform(current, from), version };
+    this.set(key, next);
+    return next;
   }
 };
