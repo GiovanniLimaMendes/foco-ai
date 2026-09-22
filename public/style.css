@@ -388,3 +388,38 @@ button:active { opacity:.82; }
  .executive-grid { grid-template-columns:1fr; }
 }
 @media (prefers-reduced-motion:reduce) { *,*::before,*::after { animation:none !important; transition:none !important; scroll-behavior:auto !important; } .thinking-dots i { opacity:.7; } }
+
+/* Progressive disclosure, quick capture, and the reading timer. */
+.home-tools { margin-top:20px; box-shadow:none; background:var(--surface-2); }
+.home-tools > summary { list-style:none; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:2px; font-weight:700; }
+.home-tools > summary::-webkit-details-marker { display:none; }
+.home-tools > summary::after { content:''; width:10px; height:10px; margin:0 12px 5px 0; flex:0 0 10px; border-right:2px solid var(--primary); border-bottom:2px solid var(--primary); transform:rotate(45deg); transition:transform .18s ease; }
+.home-tools[open] > summary::after { transform:rotate(225deg); margin-bottom:-5px; }
+.home-tools > summary > span { display:grid; gap:3px; }
+.home-tools > summary .muted { font-size:13px; font-weight:400; }
+.home-tools-content { padding-top:16px; }
+.pomodoro-controls { display:flex; align-items:center; justify-content:flex-end; flex-wrap:wrap; gap:8px; }
+.pomodoro-controls > label { color:var(--muted); font-size:13px; }
+.pomodoro-controls > select { width:auto; min-width:94px; min-height:44px; padding:9px 30px 9px 11px; }
+.pomodoro-controls > button { min-height:44px; }
+.pomodoro-controls button:disabled { cursor:not-allowed; opacity:.58; transform:none; }
+.quick-capture-btn { position:fixed; right:26px; bottom:24px; z-index:25; min-height:52px; padding:0 19px; display:flex; align-items:center; gap:9px; border:0; border-radius:999px; color:#fff; background:var(--primary); box-shadow:0 10px 28px rgba(64,65,168,.3); font-weight:700; }
+.quick-capture-btn:hover { background:var(--primary-dark); transform:translateY(-2px); }
+.quick-capture-btn > span:first-child { font-size:24px; line-height:1; }
+.quick-capture-dialog { max-width:480px; }
+.quick-capture-dialog .modal-head { margin-bottom:4px; }
+.quick-capture-dialog h2 { max-width:290px; line-height:1.25; }
+.quick-capture-dialog .button-row { margin-top:4px; }
+.quick-capture-dialog .button-row > button { min-height:48px; }
+@media (max-width:900px) {
+  .quick-capture-btn { right:16px; bottom:calc(88px + env(safe-area-inset-bottom)); width:56px; min-height:56px; padding:0; justify-content:center; }
+  .quick-capture-btn .quick-capture-label { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+  .pomodoro-controls { display:grid; grid-template-columns:1fr 1fr; justify-content:stretch; }
+  .pomodoro-controls > label { grid-column:1 / -1; }
+  .pomodoro-controls > select,.pomodoro-controls > button { width:100%; }
+}
+@media (max-width:600px) {
+  .home-tools { padding:14px; }
+  .home-tools > summary { align-items:flex-start; }
+  .quick-capture-dialog .button-row > button { flex:1 1 100%; }
+}

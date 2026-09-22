@@ -123,12 +123,17 @@
             <div id="ideaPreview" class="idea-preview"></div>
           </section>
         </div>
-        <div class="executive-grid">
-          <section class="section-card"><div class="section-head"><div><p class="card-label">MINHA CONSTELAÇÃO</p><p class="muted constellation-help">Cada começo e progresso confirmado acende uma estrela. Dias vazios não apagam nada.</p></div><label class="sr-only" for="constellationPeriod">Período da constelação</label><select id="constellationPeriod"><option value="month">Este mês</option><option value="week">Últimos 7 dias</option></select></div><div id="constellation" class="constellation" aria-live="polite"></div><p id="starDetails" class="star-details muted" aria-live="polite">Escolha uma estrela para ver esse momento.</p><div class="setting-line"><span id="xpTotal">0 XP</span><button class="text-btn" data-view-target="ideas">Ver minhas coisas</button></div><div class="achievement-area"><p class="card-label">CONQUISTAS</p><div id="achievements" class="achievements" aria-live="polite"></div></div></section>
-          <section class="section-card stack"><p class="card-label">UMA COISA PARA AMANHÃ</p><p id="tomorrowSaved" class="muted">Nada definido. Tudo bem.</p><label for="tomorrowIntention">Intenção</label><input id="tomorrowIntention" maxlength="180" placeholder="Ex.: abrir o projeto por 10 minutos" /><div class="context-row"><label>Quando<input id="tomorrowWhen" maxlength="100" placeholder="Quando chegar em casa" /></label><label>Onde<input id="tomorrowWhere" maxlength="100" placeholder="Na mesa" /></label></div><button id="saveTomorrow" class="secondary-btn">Guardar para amanhã</button></section>
-        </div>
-        <section class="section-card stack brain-dump"><p class="card-label">BRAIN DUMP</p><h2>Tira isso da cabeça por um minuto.</h2><textarea id="brainDumpText" rows="4" maxlength="4000" placeholder="Ideias, lembretes, vontades, preocupações… Nada vira obrigação sozinho."></textarea><p class="muted small">“Organizar com IA” envia este texto para o Gemini. Nada vai para Minhas coisas sem você revisar e escolher.</p><div class="button-row"><button id="organizeDumpAI" class="primary-btn">Organizar com IA ✦</button><button id="organizeDump" class="secondary-btn">Separar sem IA</button><button id="saveDumpChoices" class="text-btn">Guardar texto ou escolhas</button></div><p id="dumpError" class="error" role="alert"></p><div id="dumpReview" class="stack" aria-live="polite"></div></section>
-        <section class="section-card settings-card"><p class="card-label">PREFERÊNCIAS</p><label class="toggle-row"><input id="gamificationToggle" type="checkbox" /> Gamificação gentil</label><label class="toggle-row"><input id="celebrationToggle" type="checkbox" /> Pequenas celebrações</label><label class="toggle-row"><input id="hideStarsToggle" type="checkbox" /> Esconder detalhes nas estrelas</label><label class="toggle-row"><input id="symbolEvolutionToggle" type="checkbox" /> Evolução visual do símbolo</label></section>
+        <details class="home-tools">
+          <summary><span><strong>Mais ferramentas</strong><span class="muted">Constelação, Brain Dump, amanhã e preferências</span></span></summary>
+          <div class="home-tools-content">
+            <div class="executive-grid">
+              <section class="section-card"><div class="section-head"><div><p class="card-label">MINHA CONSTELAÇÃO</p><p class="muted constellation-help">Cada começo e progresso confirmado acende uma estrela. Dias vazios não apagam nada.</p></div><label class="sr-only" for="constellationPeriod">Período da constelação</label><select id="constellationPeriod"><option value="month">Este mês</option><option value="week">Últimos 7 dias</option></select></div><div id="constellation" class="constellation" aria-live="polite"></div><p id="starDetails" class="star-details muted" aria-live="polite">Escolha uma estrela para ver esse momento.</p><div class="setting-line"><span id="xpTotal">0 XP</span><button class="text-btn" data-view-target="ideas">Ver minhas coisas</button></div><div class="achievement-area"><p class="card-label">CONQUISTAS</p><div id="achievements" class="achievements" aria-live="polite"></div></div></section>
+              <section class="section-card stack"><p class="card-label">UMA COISA PARA AMANHÃ</p><p id="tomorrowSaved" class="muted">Nada definido. Tudo bem.</p><label for="tomorrowIntention">Intenção</label><input id="tomorrowIntention" maxlength="180" placeholder="Ex.: abrir o projeto por 10 minutos" /><div class="context-row"><label>Quando<input id="tomorrowWhen" maxlength="100" placeholder="Quando chegar em casa" /></label><label>Onde<input id="tomorrowWhere" maxlength="100" placeholder="Na mesa" /></label></div><button id="saveTomorrow" class="secondary-btn">Guardar para amanhã</button></section>
+            </div>
+            <section class="section-card stack brain-dump"><p class="card-label">BRAIN DUMP</p><h2>Tira isso da cabeça por um minuto.</h2><textarea id="brainDumpText" rows="4" maxlength="4000" placeholder="Ideias, lembretes, vontades, preocupações… Nada vira obrigação sozinho."></textarea><p class="muted small">“Organizar com IA” envia este texto para o Gemini. Nada vai para Minhas coisas sem você revisar e escolher.</p><div class="button-row"><button id="organizeDumpAI" class="primary-btn">Organizar com IA ✦</button><button id="organizeDump" class="secondary-btn">Separar sem IA</button><button id="saveDumpChoices" class="text-btn">Guardar texto ou escolhas</button></div><p id="dumpError" class="error" role="alert"></p><div id="dumpReview" class="stack" aria-live="polite"></div></section>
+            <section class="section-card settings-card"><p class="card-label">PREFERÊNCIAS</p><label class="toggle-row"><input id="gamificationToggle" type="checkbox" /> Gamificação gentil</label><label class="toggle-row"><input id="celebrationToggle" type="checkbox" /> Pequenas celebrações</label><label class="toggle-row"><input id="hideStarsToggle" type="checkbox" /> Esconder detalhes nas estrelas</label><label class="toggle-row"><input id="symbolEvolutionToggle" type="checkbox" /> Evolução visual do símbolo</label></section>
+          </div>
+        </details>
       </section>
 
       <section id="ideasView" class="view">
@@ -190,7 +195,13 @@
               <p class="card-label">TRECHO DO LIVRO</p>
               <h2 id="bookTitle">Escolha um livro acima</h2>
             </div>
-            <button class="secondary-btn" id="readingSession">Iniciar Pomodoro</button>
+            <div class="pomodoro-controls">
+              <label for="readingDuration">Duração</label>
+              <select id="readingDuration"><option value="5">5 min</option><option value="10">10 min</option><option value="15">15 min</option><option value="25" selected>25 min</option></select>
+              <button class="primary-btn" id="readingSession">Iniciar Pomodoro</button>
+              <button class="secondary-btn hidden" id="pauseReadingSession">Pausar</button>
+              <button class="text-btn hidden" id="stopReadingSession">Encerrar</button>
+            </div>
           </div>
 
           <p id="sessionStatus" class="muted small" role="status"></p>
@@ -245,6 +256,19 @@
       </section>
     </main>
   </div>
+
+  <button type="button" id="quickCaptureButton" class="quick-capture-btn" aria-label="Guardar uma coisa" aria-haspopup="dialog"><span aria-hidden="true">+</span><span class="quick-capture-label">Guardar uma coisa</span></button>
+  <dialog id="quickCaptureDialog" class="modal-dialog quick-capture-dialog" aria-labelledby="quickCaptureTitle">
+    <form id="quickCaptureForm" class="stack">
+      <div class="modal-head"><div><p class="card-label">CAPTURA RÁPIDA</p><h2 id="quickCaptureTitle">Guarde sem organizar agora.</h2></div><button type="button" class="icon-btn" id="closeQuickCapture" aria-label="Fechar">×</button></div>
+      <label for="quickThingName">O que você quer guardar?</label>
+      <input id="quickThingName" maxlength="160" required placeholder="Uma ideia, vontade ou coisa para fazer…" />
+      <label for="quickThingType">Tipo <span class="muted small">(opcional)</span></label>
+      <select id="quickThingType"><option value="interest">Quero fazer</option><option value="project">Projeto</option><option value="obligation">Preciso fazer</option></select>
+      <p class="muted small">Vai para Minhas Coisas como “Quero começar”. Você pode organizar depois.</p>
+      <div class="button-row"><button type="submit" class="primary-btn">Guardar</button><button type="button" class="secondary-btn" id="cancelQuickCapture">Cancelar</button></div>
+    </form>
+  </dialog>
 
   <dialog id="readingLogDialog" class="modal-dialog" aria-labelledby="readingLogTitle">
     <form id="readingLogForm" class="stack">

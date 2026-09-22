@@ -184,6 +184,28 @@ $('#addIdea').addEventListener('click',()=> {
   input.value=''; save(); renderIdeas(); renderPreview(); invalidateSuggestion(); input.focus(); showToast('Guardado. Sem cobrança.');
 });
 $('#ideaInput').addEventListener('keydown',e=> {if(e.key==='Enter') $('#addIdea').click();});
+const quickCaptureDialog = $('#quickCaptureDialog');
+function closeQuickCapture() {
+  if (quickCaptureDialog.open) quickCaptureDialog.close();
+  $('#quickCaptureButton').focus();
+}
+$('#quickCaptureButton').addEventListener('click', () => {
+  quickCaptureDialog.showModal();
+  $('#quickThingName').focus();
+});
+$('#closeQuickCapture').addEventListener('click', closeQuickCapture);
+$('#cancelQuickCapture').addEventListener('click', closeQuickCapture);
+$('#quickCaptureForm').addEventListener('submit', event => {
+  event.preventDefault();
+  const name = $('#quickThingName').value.trim();
+  if (!name) return $('#quickThingName').focus();
+  window.dispatchEvent(new CustomEvent('foco:add-thing', {
+    detail: { name, type: $('#quickThingType').value, category: 'general', state: 'start' }
+  }));
+  $('#quickCaptureForm').reset();
+  quickCaptureDialog.close();
+  $('#quickCaptureButton').focus();
+});
 window.addEventListener('foco:add-thing', event => {
   const proposed = event.detail;
   const text = typeof proposed?.name === 'string' ? proposed.name.trim().slice(0, 160) : '';
