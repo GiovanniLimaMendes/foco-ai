@@ -1,4 +1,24 @@
 export const XP = Object.freeze({ start:10, finish:15, resume:20, checkpoint:5, reading:10, reflection:10 });
+export const ACHIEVEMENTS = Object.freeze([
+  { id:'first-step', title:'Primeiro passo', description:'Você começou uma microação.' },
+  { id:'came-back', title:'Voltei', description:'Você retomou uma atividade pausada.' },
+  { id:'curious-reader', title:'Leitor curioso', description:'Você completou 10 sessões de leitura.' },
+  { id:'one-step-at-a-time', title:'Um passo por vez', description:'Você iniciou 50 microações.' },
+  { id:'found-my-rhythm', title:'Encontrei meu ritmo', description:'Você registrou feedback em 10 sessões.' }
+]);
+
+export function earnedAchievements(rewards, sessions, stats = {}) {
+  const events=Array.isArray(rewards?.events) ? rewards.events : [];
+  const starts=events.filter(event=>event.label==='start').length;
+  const resumes=events.some(event=>event.label==='resume');
+  const feedback=Array.isArray(sessions) ? sessions.filter(session=>session?.feedback).length : 0;
+  const readers=Math.max(Number(stats.readingSessions)||0,Array.isArray(sessions) ? sessions.filter(session=>session?.category==='reading' && session.status==='completed').length : 0);
+  return ACHIEVEMENTS.filter(item => item.id==='first-step' ? starts>=1
+    : item.id==='came-back' ? resumes
+    : item.id==='curious-reader' ? readers>=10
+    : item.id==='one-step-at-a-time' ? starts>=50
+    : item.id==='found-my-rhythm' ? feedback>=10 : false);
+}
 
 export function award(state, eventId, amount, label) {
   const current = state && typeof state === 'object' ? state : { total:0, events:[] };

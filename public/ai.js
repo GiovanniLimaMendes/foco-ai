@@ -30,7 +30,7 @@ function initDay() {
     $('#draftStatus').textContent = 'Rascunho salvo neste navegador.';
   };
   $('#dayText').addEventListener('input', () => { clearTimeout(saveTimer); $('#draftStatus').textContent = 'Salvando rascunho…'; saveTimer = setTimeout(saveDraft, 350); });
-  function persist(entry) { entries.unshift(entry); entries = entries.slice(0, 100); storage.set('day_entries', entries); storage.remove('day_draft'); renderHistory(); }
+  function persist(entry) { entries.unshift(entry); entries = entries.slice(0, 100); storage.set('day_entries', entries); storage.remove('day_draft'); renderHistory(); window.dispatchEvent(new CustomEvent('foco:reflection-saved',{detail:{id:entry.id}})); }
   function renderHistory() {
     $('#dayHistory').innerHTML = entries.map(entry => `<details><summary>${dateLabel(entry.createdAt)} — ${escapeHtml(entry.text.slice(0, 90))}${entry.text.length > 90 ? '…' : ''}</summary><p class="entry-text">${escapeHtml(entry.text)}</p>${safeAnalysis(entry.analysis) ? `<div class="analysis"><h3>Resumo da análise</h3><p>${escapeHtml(entry.analysis.summary)}</p></div>` : ''}</details>`).join('') || '<p class="muted">Quando quiser, deixe aqui uma lembrança do seu dia.</p>';
   }

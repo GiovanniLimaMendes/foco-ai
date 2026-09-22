@@ -198,6 +198,9 @@ textarea { width:100%; resize:vertical; min-height:100px; line-height:1.7; }
 .primary-btn { color:var(--on-primary); box-shadow:none; }
 .primary-btn:hover { transform:none; }
 .brand-mark { color:var(--on-primary); box-shadow:none; }
+.brand-logo { transition:filter .25s ease; }
+.brand-logo[data-focus-level="1"] { filter:drop-shadow(0 0 5px #7778f288); }
+.brand-logo[data-focus-level="2"] { filter:drop-shadow(0 0 7px #7778f2aa) drop-shadow(0 0 13px #68d9ff77); }
 h1 { line-height:1.15; }
 h1,h2,h3,p,.message { overflow-wrap:anywhere; }
 .main { max-width:1600px; }
@@ -256,6 +259,15 @@ h1,h2,h3,p,.message { overflow-wrap:anywhere; }
 .constellation { position:relative; min-height:150px; overflow:hidden; border-radius:14px; background:radial-gradient(circle at 30% 35%, var(--primary-soft), transparent 45%), var(--surface-2); }
 .constellation .muted { padding:22px; }
 .star { position:absolute; left:var(--x); top:var(--y); min-height:32px; width:32px; padding:0; color:#68d9ff; background:transparent; border:0; font-size:20px; text-shadow:0 0 12px #68d9ff; }
+.star:hover,.star:focus-visible { color:#b9f1ff; transform:scale(1.12); }
+.star-details { min-height:24px; margin:10px 0 0; font-size:13px; }
+.achievement-area { margin-top:18px; border-top:1px solid var(--line); padding-top:14px; }
+.achievements { display:flex; flex-wrap:wrap; gap:8px; }
+.achievement { padding:10px 12px; border:1px solid var(--line); border-radius:12px; background:var(--surface-2); }
+.achievement strong { color:var(--primary); font-size:13px; }
+.achievement p { margin:3px 0 0; color:var(--muted); font-size:12px; }
+.achievement.just-earned { animation:gentle-arrival .45s ease-out both; }
+@keyframes gentle-arrival { from { opacity:.65; transform:scale(.97); } to { opacity:1; transform:scale(1); } }
 .setting-line,.toggle-row { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:12px; }
 .toggle-row { justify-content:flex-start; min-height:44px; }
 .toggle-row input { width:20px; height:20px; accent-color:var(--primary); }

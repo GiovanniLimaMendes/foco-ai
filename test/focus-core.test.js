@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { award, orderedIdeas, localAction } from '../public/focus-core.js';
+import { award, orderedIdeas, localAction, earnedAchievements } from '../public/focus-core.js';
 
 test('XP só recompensa o mesmo evento uma vez', () => {
   const first = award({ total:0, events:[] }, 'session-1', 10, 'start');
@@ -8,6 +8,17 @@ test('XP só recompensa o mesmo evento uma vez', () => {
   assert.equal(first.state.total, 10);
   assert.equal(second.state.total, 10);
   assert.equal(second.awarded, 0);
+});
+
+test('conquistas aparecem apenas quando os eventos correspondentes aconteceram', () => {
+  const earned=earnedAchievements({events:[{label:'start'},{label:'resume'}]},[],{});
+  assert.deepEqual(earned.map(item=>item.id),['first-step','came-back']);
+});
+
+test('conquistas de leitura e feedback usam sessões confirmadas', () => {
+  const sessions=Array.from({length:10},(_,index)=>({category:'reading',status:'completed',feedback:index<10?'yes':null}));
+  const earned=earnedAchievements({events:[]},sessions,{});
+  assert.deepEqual(earned.map(item=>item.id),['curious-reader','found-my-rhythm']);
 });
 
 test('energia média prioriza itens médios e depois leves', () => {
