@@ -191,12 +191,14 @@ window.addEventListener('foco:add-thing', event => {
   const category = ['general', 'reading', 'game', 'series'].includes(proposed?.category) ? proposed.category : 'general';
   const state = proposed?.state === 'in_progress' ? 'in_progress' : 'start';
   const progress = typeof proposed?.progress === 'string' ? proposed.progress.trim().slice(0,300) : '';
+  const nextStep = typeof proposed?.nextStep === 'string' ? proposed.nextStep.trim().slice(0,240) : '';
+  const currentPage = category === 'reading' ? Number(progress.match(/(?:p[aá]gina|pag\.?|p\.)\s*(\d+)/i)?.[1]) || 0 : 0;
   if (!text) return;
   if (ideas.some(item => item.text.trim().toLocaleLowerCase('pt-BR') === text.toLocaleLowerCase('pt-BR'))) {
     showToast('Isso já está em Minhas coisas.');
     return;
   }
-  ideas.unshift({ id: crypto.randomUUID(), text, type, state, effort: category === 'reading' ? 'light' : 'regular', category, book:{totalPages:null,currentPage:0,notes:[]}, game:{progress: category === 'game' ? progress : ''}, media:{progress: category === 'series' ? progress : ''}, nextStep: '', lastInteraction: null });
+  ideas.unshift({ id: crypto.randomUUID(), text, type, state, effort: category === 'reading' ? 'light' : 'regular', category, book:{totalPages:null,currentPage,notes:[]}, game:{progress: category === 'game' ? progress : ''}, media:{progress: category === 'series' ? progress : ''}, nextStep, lastInteraction: null });
   save(); renderIdeas(); renderPreview(); invalidateSuggestion();
   showToast('Guardado em Minhas coisas.');
 });

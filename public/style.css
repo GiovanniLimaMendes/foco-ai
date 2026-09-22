@@ -277,6 +277,9 @@ h1,h2,h3,p,.message { overflow-wrap:anywhere; }
 .focus-timer { display:block; font-size:clamp(52px,15vw,88px); text-align:center; font-variant-numeric:tabular-nums; letter-spacing:-.06em; color:var(--primary); padding:16px 0; }
 .dump-item { display:block; padding:12px; border:1px solid var(--line); border-radius:10px; background:var(--surface-2); }
 .dump-item input { width:18px; height:18px; vertical-align:middle; margin-right:8px; accent-color:var(--primary); }
+.dump-meta { display:block; margin:4px 0 0 30px; color:var(--muted); font-size:13px; }
+.chat-diary-preview { border-color:var(--line); }
+.chat-diary-preview .entry-text { max-height:220px; overflow:auto; margin:12px 0 0; font-size:14px; }
 details { border:1px solid var(--line); background:var(--surface); border-radius:14px; padding:16px; }
 summary { cursor:pointer; min-height:28px; overflow-wrap:anywhere; }
 .entry-text { white-space:pre-wrap; overflow-wrap:anywhere; }

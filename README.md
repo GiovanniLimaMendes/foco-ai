@@ -59,8 +59,9 @@ test/               testes pequenos da lógica sem interface
 | --- | --- | --- |
 | GET | `/api/health` | Estado do servidor e da configuração de IA |
 | POST | `/api/analyze-day` | Analisa `{ "entry": "..." }` |
-| POST | `/api/chat` | Responde a `{ "message": "...", "history": [], "things": [] }` |
+| POST | `/api/chat` | Responde a `{ "message": "...", "history": [], "context": {}, "diary": "" }`; `context` e `diary` são opcionais |
 | POST | `/api/explain` | Explica `{ "text": "..." }` |
+| POST | `/api/organize-dump` | Sugere itens a revisar a partir de `{ "text": "..." }` |
 
 As rotas validam o tamanho das entradas e nunca enviam a chave ao navegador. O backend não registra diário, chat ou chave em logs.
 
@@ -74,11 +75,12 @@ As rotas validam o tamanho das entradas e nunca enviam a chave ao navegador. O b
 - Leitura vinculada aos livros em Minhas coisas: trecho salvo por livro, sessão curta, voz do navegador e explicação opcional por IA.
 - PWA instalável: com HTTPS, o navegador permite adicionar o Foco à tela inicial do celular. A logo oficial do projeto é usada no cabeçalho e ícones PWA.
 - Meu dia com rascunho e histórico local, além de análise estruturada opcional por Gemini.
-- Assistente IA curto, com histórico local limitado.
+- Assistente IA curto. Contexto de Minhas Coisas e até quatro mensagens anteriores só são enviados quando você marca essa opção; o último relato de Meu Dia exige uma autorização separada por mensagem.
+- Brain Dump com rascunho salvo localmente, organização opcional por IA e revisão antes de salvar qualquer sugestão em Minhas coisas. A intenção de amanhã permanece voluntária e aparece como lembrete discreto dentro do app, sem notificações push.
 - Tema claro/escuro, navegação acessível, foco visível, navegação inferior no celular e redução de animação quando o sistema pede.
 
 ## Privacidade e limites atuais
 
-Dados locais ficam no `localStorage` deste navegador. Diário só é enviado ao Gemini depois de clicar em “Analisar meu dia”; explicação envia apenas o trecho atual; o chat envia a mensagem, até quatro mensagens anteriores e até 25 coisas ativas para que possa sugerir algo relevante. Uma coisa nova só é salva após confirmação. Por padrão, o chat usa `gemini-3.5-flash-lite` com raciocínio mínimo para responder mais rápido. Se o modelo principal do diário estiver temporariamente indisponível, ele tenta `GEMINI_DAY_FALLBACK_MODEL` automaticamente. Você pode usar o modelo principal no chat definindo `GEMINI_CHAT_MODEL=gemini-3.8-flash` e `GEMINI_CHAT_THINKING_LEVEL=LOW`, caso prefira respostas mais elaboradas. O SDK instalado é `@google/genai` 2.23.0 e a chamada `models.generateContent` usada aqui não expõe `store: false`; por isso o app não afirma essa configuração. Consulte os termos e controles de dados da Gemini antes de usar textos sensíveis.
+Dados locais ficam no `localStorage` deste navegador. Diário só é enviado ao Gemini ao clicar em “Analisar meu dia” ou ao marcar a opção específica de incluir um único relato no chat. O Brain Dump só é enviado ao tocar em “Organizar com IA”; as sugestões não são salvas sem revisão e confirmação. O contexto opcional do chat inclui até oito coisas ativas e até quatro sessões recentes, não o histórico inteiro. Explicação envia apenas o trecho atual. Por padrão, o chat usa `gemini-3.5-flash-lite` com raciocínio mínimo para responder mais rápido. Se o modelo principal do diário estiver temporariamente indisponível, ele tenta `GEMINI_DAY_FALLBACK_MODEL` automaticamente. Você pode usar o modelo principal no chat definindo `GEMINI_CHAT_MODEL=gemini-3.8-flash` e `GEMINI_CHAT_THINKING_LEVEL=LOW`, caso prefira respostas mais elaboradas. O SDK instalado é `@google/genai` 2.23.0 e a chamada `models.generateContent` usada aqui não expõe `store: false`; por isso o app não afirma essa configuração. Consulte os termos e controles de dados da Gemini antes de usar textos sensíveis.
 
 Ainda não há autenticação, banco de dados, sincronização, exportação, edição de itens/entradas ou uma integração de voz conversacional. Próximos passos úteis são adicionar testes de API com uma IA simulada, uma camada de banco/autenticação e uma API de sugestão reutilizável para o futuro mobile.

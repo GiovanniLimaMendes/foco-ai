@@ -92,12 +92,23 @@ function initChat() {
   async function send(value) {
     const message = value.trim(); if (!message) return;
     $('#chatError').textContent = '';
-    const previous = messages.slice(-4);
-    const personalThings = storage.get('ideas', []).filter(item => item && ['active', 'in_progress', 'start'].includes(item.state));
+    const includeContext=$('#chatContextToggle').checked;
+    const previous=includeContext ? messages.filter(item=>['user','assistant'].includes(item.role)).slice(-4).map(({role,content})=>({role,content})) : [];
+    const personalThings=includeContext ? storage.get('ideas',[]).filter(item=>item && ['active','in_progress','start','paused'].includes(item.state)).slice(0,8).map(item=>({text:item.text,type:item.type,state:item.state,category:item.category,effort:item.effort,preferredEnergy:item.preferredEnergy,estimatedMinutes:item.estimatedMinutes,nextStep:item.nextStep,lastStop:item.lastStop,progress:item.category==='game'?item.game?.progress:item.category==='series'?item.media?.progress:item.category==='reading' && item.book?.currentPage?`Página ${item.book.currentPage}`:''})) : [];
+    const executive=includeContext ? storage.get('executive_memory',{}) : {};
+    const context=includeContext ? {energy:storage.get('energy','normal'),things:personalThings,sessions:(Array.isArray(executive.sessions)?executive.sessions:[]).slice(0,4).map(session=>({activity:session.title,action:session.action,status:session.status,plannedMinutes:session.plannedMinutes,feedback:session.feedback,lastStop:session.lastStop,nextStep:session.nextStep}))} : undefined;
+    let diary;
+    if ($('#chatDiaryToggle').checked) {
+      const latest=storage.get('day_entries',[])[0];
+      if (!latest || typeof latest.text!=='string' || !latest.text.trim()) { $('#chatError').textContent='Não encontrei um relato guardado em Meu Dia para incluir.'; $('#chatDiaryToggle').checked=false; $('#chatDiaryPreview').classList.add('hidden'); return; }
+      diary=latest.text.trim().slice(0,2000);
+      $('#chatDiaryToggle').checked=false;
+      $('#chatDiaryPreview').classList.add('hidden');
+    }
     messages.push({role:'user',content:message}); storage.set('chat_history',messages); isThinking = true; render(); $('#chatText').value = '';
     await busy($('#sendChat'), 'Enviando…', async () => {
       try {
-        const result = await requestAI('chat', { message, history: previous, things: personalThings });
+        const result = await requestAI('chat', { message, history: previous, context, diary });
         if (typeof result.reply !== 'string' || !result.reply.trim()) throw new Error('Não consegui mostrar a resposta da IA. Tente de novo.');
         messages.push({role:'assistant',content:result.reply.trim(),proposedThing:proposal(result.proposedThing)}); storage.set('chat_history',messages); render();
       } catch (error) { $('#chatError').textContent = error.message; }
@@ -105,6 +116,13 @@ function initChat() {
     });
   }
   $('#chatForm').addEventListener('submit', event => { event.preventDefault(); send($('#chatText').value); });
+  $('#chatDiaryToggle').addEventListener('change',()=> {
+    const preview=$('#chatDiaryPreview');
+    if (!$('#chatDiaryToggle').checked) { preview.classList.add('hidden'); return; }
+    const latest=storage.get('day_entries',[])[0];
+    if (!latest || typeof latest.text!=='string') { $('#chatError').textContent='Não encontrei um relato guardado em Meu Dia para incluir.'; $('#chatDiaryToggle').checked=false; preview.classList.add('hidden'); return; }
+    $('#chatError').textContent=''; $('#chatDiaryText').textContent=latest.text.trim().slice(0,2000); preview.classList.remove('hidden'); preview.open=true;
+  });
   $$('[data-starter]').forEach(button => button.addEventListener('click', () => send(button.dataset.starter)));
   $('#clearChat').addEventListener('click', () => { if (!messages.length || confirm('Limpar esta conversa deste navegador?')) { messages = []; storage.remove('chat_history'); render(); showToast('Conversa limpa.'); } });
   render();

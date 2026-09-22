@@ -1,5 +1,5 @@
 import { storage } from './storage.js';
-import { $, $$, escapeHtml, showToast } from './ui.js';
+import { $, $$, busy, escapeHtml, requestAI, showToast } from './ui.js';
 import { XP, award, orderedIdeas, localAction, earnedAchievements } from './focus-core.js';
 
 const KEY = 'executive_memory';
@@ -17,6 +17,8 @@ export function initExecutive() {
   let flow = { energy:'normal', minutes:10, preference:'any', index:0, action:null };
   let activeSession = null; let selectedItem = null; let timer;
   const dialog = $('#stuckDialog'); const focusDialog = $('#focusDialog');
+  $('#brainDumpText').value=storage.get('brain_dump_draft','');
+  $('#brainDumpText').addEventListener('input',()=>storage.set('brain_dump_draft',$('#brainDumpText').value.slice(0,4000)));
   function renderSettings() { const data=memory(); $('#xpTotal').textContent=`${data.rewards.total || 0} XP`; $('#gamificationToggle').checked=data.settings.gamification; $('#celebrationToggle').checked=data.settings.celebrations; $('#hideStarsToggle').checked=data.settings.hideConstellationDetails; $('#symbolEvolutionToggle').checked=data.settings.symbolEvolution; const level=!data.settings.symbolEvolution || !data.settings.gamification ? 0 : data.rewards.total>=500 ? 2 : data.rewards.total>=100 ? 1 : 0; document.querySelectorAll('.brand-logo').forEach(logo=>logo.dataset.focusLevel=String(level)); }
   function chooseAction() { const list=orderedIdeas(ideas(),flow.energy); let candidates=list; if(flow.preference==='fun') candidates=list.filter(item=>item.type==='interest' || ['game','series'].includes(item.category)); if(flow.preference==='important') candidates=list.filter(item=>item.type==='obligation' || item.state==='in_progress'); if(!candidates.length) candidates=list; flow.action=localAction(candidates[flow.index % Math.max(1,candidates.length)],flow.energy,flow.minutes); flow.action.item=candidates[flow.index % Math.max(1,candidates.length)] || null; }
   function renderFlow(step='energy') { dialog.dataset.step=step; $$('.flow-step').forEach(node=>node.classList.toggle('hidden',node.dataset.step!==step)); if(step==='suggestion') { chooseAction(); $('#flowActionTitle').textContent=flow.action.title; $('#flowAction').textContent=flow.action.action; $('#flowReason').textContent=flow.action.reason; } }
@@ -62,9 +64,40 @@ export function initExecutive() {
   $('#completeFocus').addEventListener('click',()=>finish('completed')); $('#stopFocus').addEventListener('click',()=>finish('stopped'));
   $$('[data-feedback]').forEach(button=>button.addEventListener('click',()=> { const data=memory(); const session=data.sessions[0]; if(session && !session.feedback) { session.feedback=button.dataset.feedback; save(data); } $('#feedbackDialog').close(); renderAchievements(true); }));
   $('#saveTomorrow').addEventListener('click',()=> { const intention=$('#tomorrowIntention').value.trim(); if(!intention) return showToast('Escreva uma intenção pequena primeiro.'); const data=memory(); data.tomorrow={intention,when:$('#tomorrowWhen').value.trim(),where:$('#tomorrowWhere').value.trim(),createdAt:now()}; save(data); renderTomorrow(); showToast('Amanhã tem uma única intenção guardada.'); });
-  function renderTomorrow() { const value=memory().tomorrow; $('#tomorrowSaved').textContent=value ? `${value.intention}${value.when ? ` · ${value.when}`:''}${value.where ? ` · ${value.where}`:''}` : 'Nada definido. Tudo bem.'; }
-  $('#organizeDump').addEventListener('click',()=> { const text=$('#brainDumpText').value.trim(); if(!text) return; const parts=text.split(/[\n.;]+/).map(part=>part.trim()).filter(part=>part.length>2).slice(0,6); $('#dumpReview').innerHTML=parts.length ? parts.map((part,index)=>`<label class="dump-item"><input type="checkbox" checked data-dump="${index}" /> ${escapeHtml(part)}</label>`).join('') : '<p class="muted">Não encontrei uma ideia separada ainda.</p>'; $('#dumpReview').dataset.items=JSON.stringify(parts); });
-  $('#saveDumpChoices').addEventListener('click',()=> { const parts=JSON.parse($('#dumpReview').dataset.items || '[]'); $$('[data-dump]:checked').forEach(input=>window.dispatchEvent(new CustomEvent('foco:add-thing',{detail:{name:parts[Number(input.dataset.dump)],type:'interest',category:'general'}}))); const data=memory(); data.brainDump.unshift({text:$('#brainDumpText').value.trim(),createdAt:now()}); save(data); $('#brainDumpText').value=''; $('#dumpReview').innerHTML=''; showToast('Você escolheu o que queria guardar.'); });
+  function renderTomorrow() {
+    const value=memory().tomorrow;
+    $('#tomorrowIntention').value=value?.intention || '';
+    $('#tomorrowWhen').value=value?.when || '';
+    $('#tomorrowWhere').value=value?.where || '';
+    if(!value) { $('#tomorrowSaved').textContent='Nada definido. Tudo bem.'; return; }
+    const created=new Date(value.createdAt || 0);
+    const stillTomorrow=Number.isFinite(created.valueOf()) && created.toDateString()===new Date().toDateString();
+    const context=[value.when,value.where].filter(Boolean).join(' · ');
+    $('#tomorrowSaved').textContent=`${stillTomorrow?'Para amanhã, se fizer sentido:':'Você tinha guardado esta intenção; veja se ainda faz sentido:'} ${value.intention}${context?` · ${context}`:''}`;
+  }
+  function renderDumpReview(items,note='Revise as sugestões e escolha o que quer guardar.') {
+    const safe=items.filter(item=>item && typeof item.name==='string' && item.name.trim()).slice(0,5);
+    $('#dumpReview').dataset.items=JSON.stringify(safe);
+    $('#dumpReview').innerHTML=safe.length ? `<p class="muted small">${escapeHtml(note)}</p>${safe.map((item,index)=>`<label class="dump-item"><input type="checkbox" checked data-dump="${index}" /> <strong>${escapeHtml(item.name)}</strong><span class="dump-meta">${escapeHtml(item.category==='reading'?'Leitura':item.category==='game'?'Jogo':item.category==='series'?'Filme/série':'Geral')} · ${item.state==='in_progress'?'Em andamento':'Quero começar'}</span>${item.nextStep?`<span class="dump-meta">Próximo passo: ${escapeHtml(item.nextStep)}</span>`:''}</label>`).join('')}` : `<p class="muted">${escapeHtml(note || 'Não encontrei algo que pareça querer guardar.')}</p>`;
+  }
+  $('#organizeDump').addEventListener('click',()=> { $('#dumpError').textContent=''; const text=$('#brainDumpText').value.trim(); if(!text) return; const items=text.split(/[\n.;]+/).map(part=>part.trim()).filter(part=>part.length>2).slice(0,5).map(name=>({name,type:'interest',category:'general',state:'start',progress:'',nextStep:''})); renderDumpReview(items,items.length?'Revise. Nada será adicionado até você escolher.':'Não encontrei uma ideia separada ainda.'); });
+  $('#organizeDumpAI').addEventListener('click',()=>busy($('#organizeDumpAI'),'Organizando…',async()=> {
+    $('#dumpError').textContent='';
+    const text=$('#brainDumpText').value.trim();
+    if(!text) { $('#dumpError').textContent='Escreva ou cole algo para organizar primeiro.'; $('#brainDumpText').focus(); return; }
+    try { const result=await requestAI('organize-dump',{text}); renderDumpReview(Array.isArray(result.items)?result.items:[],result.note); }
+    catch(error) { $('#dumpError').textContent=error.message; }
+  }));
+  $('#saveDumpChoices').addEventListener('click',()=> {
+    const parts=JSON.parse($('#dumpReview').dataset.items || '[]');
+    const selected=$$('[data-dump]:checked').map(input=>parts[Number(input.dataset.dump)]).filter(Boolean);
+    const text=$('#brainDumpText').value.trim();
+    if(!text && !selected.length) return showToast('Não há texto ou escolha para guardar.');
+    selected.forEach(item=>window.dispatchEvent(new CustomEvent('foco:add-thing',{detail:item})));
+    if(text) { const data=memory(); data.brainDump.unshift({text,createdAt:now()}); data.brainDump=data.brainDump.slice(0,100); save(data); }
+    $('#brainDumpText').value=''; storage.remove('brain_dump_draft'); $('#dumpReview').innerHTML=''; $('#dumpReview').dataset.items='[]';
+    showToast(selected.length?'Suas escolhas foram guardadas.':'Texto guardado neste navegador.');
+  });
   function renderConstellation() {
     const data=memory();
     const nowDate=new Date();
