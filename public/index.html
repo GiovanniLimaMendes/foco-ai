@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Foco — Assistente para TDAH</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <meta name="theme-color" content="#5b5ce2" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main">Pular para o conteúdo</a>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">F</div>
+        <div>
+          <strong>Foco</strong>
+          <span>seu assistente</span>
+        </div>
+      </div>
+
+      <nav aria-label="Navegação principal">
+        <button class="nav-item active" data-view="home">⌂ <span>Início</span></button>
+        <button class="nav-item" data-view="ideas">✦ <span>Minhas coisas</span></button>
+        <button class="nav-item" data-view="reading">▤ <span>Leitura</span></button>
+      <button class="nav-item" data-view="day">✎ <span>Meu dia</span></button>
+        <button class="nav-item" data-view="chat">◇ <span>Assistente IA</span></button>
+      </nav>
+      <button class="ghost-btn theme-toggle" aria-pressed="false">Modo escuro</button>
+
+      <div class="sidebar-tip">
+        <span>🧠</span>
+        <p>Você não precisa fazer tudo hoje. Só precisa descobrir o próximo passo.</p>
+      </div>
+    </aside>
+
+    <main class="main" id="main" tabindex="-1">
+      <header class="mobile-header">
+        <div class="brand">
+          <div class="brand-mark">F</div>
+          <strong>Foco</strong>
+        </div>
+      <button class="ghost-btn theme-toggle" aria-pressed="false">Modo escuro</button></header>
+
+      <section id="homeView" class="view active">
+        <div class="page-heading">
+          <div>
+            <p class="eyebrow">ASSISTENTE PESSOAL</p>
+            <h1>Seu próximo passo.</h1>
+            <p class="muted">Vamos descobrir o que faz sentido fazer agora.</p>
+          </div>
+          <span class="local-badge">Um passo de cada vez</span>
+        </div>
+
+        <div class="energy-card">
+          <div>
+            <p class="card-label">COMO VOCÊ ESTÁ AGORA?</p>
+            <h2>Escolha seu nível de energia</h2>
+          </div>
+          <div class="energy-options">
+            <button class="energy" data-energy="low"><span>😴</span><b>Baixa</b><small>Sem muita energia</small></button>
+            <button class="energy selected" data-energy="normal"><span>😐</span><b>Média</b><small>Consigo fazer algo</small></button>
+            <button class="energy" data-energy="high"><span>⚡</span><b>Alta</b><small>Quero fazer coisas</small></button>
+          </div>
+        </div>
+
+        <div class="action-card">
+          <div class="action-copy">
+            <span class="big-icon">🎯</span>
+            <div>
+              <p class="card-label">TRAVEI E NÃO SEI O QUE FAZER</p>
+              <h2>Me ajuda a escolher</h2>
+              <p class="muted">O Foco olha para o que você quer fazer e sugere uma próxima ação pequena.</p>
+            </div>
+          </div>
+          <button class="primary-btn" id="helpMe">ME AJUDA <span>→</span></button>
+        </div>
+
+        <div id="suggestionPanel" class="suggestion-panel hidden">
+          <div class="suggestion-header">
+            <div>
+              <p class="card-label">PRÓXIMA AÇÃO</p>
+              <h2 id="suggestionTitle">Vamos começar pequeno.</h2>
+            </div>
+            <button class="icon-btn" id="closeSuggestion" aria-label="Fechar sugestão">×</button>
+          </div>
+          <div class="suggestion-body">
+            <div class="suggestion-icon" id="suggestionIcon">💻</div>
+            <div>
+              <h3 id="suggestionTask">Abrir seu projeto</h3>
+              <p id="suggestionReason" class="muted">Só precisamos começar. Não é para terminar agora.</p>
+              <span class="time-pill" id="suggestionTime">~ 5 min</span>
+            </div>
+          </div>
+          <div class="suggestion-actions">
+            <button class="text-btn" id="stuckSuggestion">Estou travado</button>
+            <button class="secondary-btn" id="skipSuggestion">Outra opção</button>
+            <button class="primary-btn" id="startSuggestion">COMEÇAR <span>→</span></button>
+          </div>
+        </div>
+
+        <div class="two-col">
+          <section class="section-card">
+            <div class="section-head">
+              <div>
+                <p class="card-label">CONTINUE DE ONDE PAROU</p>
+                <h2>Seu foco atual</h2>
+              </div>
+              <button class="text-btn" data-view-target="reading">Ver leitura</button>
+            </div>
+            <div id="readingResume" class="reading-resume"></div>
+          </section>
+
+          <section class="section-card">
+            <div class="section-head">
+              <div>
+                <p class="card-label">SEM COBRANÇA</p>
+                <h2>O que está na sua cabeça?</h2>
+              </div>
+              <button class="text-btn" data-view-target="ideas">Ver tudo</button>
+            </div>
+            <div id="ideaPreview" class="idea-preview"></div>
+          </section>
+        </div>
+      </section>
+
+      <section id="ideasView" class="view">
+        <div class="page-heading">
+          <div>
+            <p class="eyebrow">SEU ESPAÇO MENTAL</p>
+            <h1>Minhas coisas ✦</h1>
+            <p class="muted">Registre coisas que você quer fazer sem transformar tudo em obrigação.</p>
+          </div>
+        </div>
+
+        <div class="capture-card">
+          <div class="capture-icon">💭</div>
+          <div class="capture-content">
+            <h2>O que você está com vontade de fazer?</h2>
+            <p class="muted">Pode ser qualquer coisa: aprender, jogar, ler, criar, pesquisar, consertar...</p>
+            <div class="input-row">
+              <label class="sr-only" for="ideaInput">Nome da sua ideia ou projeto</label>
+              <label class="sr-only" for="ideaType">Tipo</label>
+              <input id="ideaInput" type="text" maxlength="160" placeholder="Ex.: aprender Python, terminar Cyberpunk..." />
+              <select id="ideaType">
+                <option value="interest">Quero fazer</option>
+                <option value="project">Projeto</option>
+                <option value="obligation">Preciso fazer</option>
+              </select>
+              <button class="primary-btn" id="addIdea">Adicionar</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="filter-row">
+          <button class="filter active" data-filter="all">Tudo</button>
+          <button class="filter" data-filter="interest">Quero fazer</button>
+          <button class="filter" data-filter="project">Projetos</button>
+          <button class="filter" data-filter="obligation">Preciso fazer</button>
+        </div>
+
+        <p class="muted small">Tudo fica neste navegador. Você pode pausar uma ideia sem perder o que escreveu.</p>
+        <div id="ideasGrid" class="ideas-grid"></div>
+      </section>
+
+      <section id="readingView" class="view">
+        <div class="page-heading">
+          <div>
+            <p class="eyebrow">MODO LEITURA</p>
+            <h1>Leia sem precisar vencer o livro inteiro.</h1>
+            <p class="muted">Sessões curtas, trecho em foco e explicação quando você travar.</p>
+          </div>
+        </div>
+
+        <section id="readingLibrary" class="section-card reading-library" aria-labelledby="readingLibraryTitle">
+          <div><p class="card-label">SEUS LIVROS</p><h2 id="readingLibraryTitle">Leituras em Minhas coisas</h2></div>
+          <div id="readingLibraryContent"></div>
+        </section>
+
+        <div class="reader-card">
+          <div class="reader-top">
+            <div>
+              <p class="card-label">TRECHO DO LIVRO</p>
+              <h2 id="bookTitle">Escolha um livro acima</h2>
+            </div>
+            <button class="secondary-btn" id="readingSession">Iniciar Pomodoro</button>
+          </div>
+
+          <p id="sessionStatus" class="muted small" role="status"></p>
+
+          <div class="reader-focus">
+            <span class="focus-tag">TRECHO EM FOCO</span>
+            <p id="readerText">Registre uma leitura com um trecho para usar a leitura em voz alta ou pedir uma explicação.</p>
+          </div>
+
+          <div class="reader-controls">
+            <button class="secondary-btn" id="listenBtn">Ouvir trecho</button>
+            <button class="secondary-btn" id="explainBtn">Explicar com IA ✦</button>
+          </div>
+
+          <p class="muted small">Ao pedir uma explicação, apenas o trecho atual será enviado ao Gemini. A voz usa o serviço do navegador e pode depender de conexão.</p>
+          <p id="readingError" role="alert" class="error"></p>
+          <div id="explainBox" class="explain-box hidden">
+            <strong>Em palavras simples:</strong>
+            <p>O texto está dizendo que um código bom deve ser fácil de entender. A pessoa que abrir seu código depois deve conseguir descobrir rapidamente o que ele faz, sem precisar decifrar um monte de coisa.</p>
+          </div>
+        </div>
+
+        <div class="reading-principle">
+          <span>💡</span>
+          <div>
+            <strong>Regra do Foco</strong>
+            <p>Você não precisa terminar. Seu único objetivo agora é avançar um pequeno trecho.</p>
+          </div>
+        </div>
+      </section>
+      <section id="dayView" class="view">
+        <div class="page-heading"><div><p class="eyebrow">UM ESPAÇO PARA VOCÊ</p><h1>Como foi seu dia?</h1><p class="muted">Pode escrever do jeito que vier. Não precisa organizar.</p></div></div>
+        <div class="section-card stack">
+          <label for="dayText">O que aconteceu hoje?</label>
+          <textarea id="dayText" rows="9" maxlength="12000" placeholder="Hoje eu…"></textarea>
+          <p id="draftStatus" class="muted small" role="status">Seu rascunho fica neste navegador.</p>
+          <p class="muted small">Só ao clicar em analisar, este relato será enviado ao Gemini. A IA pode se enganar; a leitura do seu dia é sua.</p>
+          <div class="button-row"><button class="primary-btn" id="analyzeDay">Analisar meu dia ✦</button><button class="secondary-btn" id="saveDay">Guardar sem IA</button></div>
+          <p id="dayError" class="error" role="alert"></p>
+          <div id="dayAnalysis" class="analysis hidden" aria-live="polite"></div>
+        </div>
+        <section class="history-section"><h2>Dias guardados</h2><div id="dayHistory" class="stack"></div></section>
+      </section>
+      <section id="chatView" class="view">
+        <div class="page-heading"><div><p class="eyebrow">VAMOS COMEÇAR PEQUENO</p><h1>Uma coisa de cada vez.</h1><p class="muted">Me conta onde você travou. Encontramos um começo possível.</p></div></div>
+        <div class="section-card stack">
+          <div id="chatMessages" class="chat-messages" role="log" aria-label="Conversa com o assistente" aria-live="polite"></div>
+          <div class="button-row" id="chatStarters"><button class="secondary-btn" data-starter="Não sei o que fazer.">Não sei o que fazer</button><button class="secondary-btn" data-starter="Tenho 30 minutos livres.">Tenho 30 minutos</button></div>
+          <form id="chatForm" class="stack"><label for="chatText">O que está na sua cabeça?</label><textarea id="chatText" rows="3" maxlength="4000" required placeholder="Queria começar, mas…"></textarea><p class="muted small">Ao enviar, sua mensagem, até 4 mensagens anteriores e até 25 coisas ativas vão para o Gemini para ajudar na sugestão. O diário não é enviado. O Foco só guarda uma nova coisa se você confirmar.</p><div class="button-row"><button id="sendChat" class="primary-btn">Enviar ✦</button><button id="clearChat" type="button" class="text-btn">Limpar conversa</button></div></form>
+          <p id="chatError" class="error" role="alert"></p>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="readingLogDialog" class="modal-dialog" aria-labelledby="readingLogTitle">
+    <form id="readingLogForm" class="stack">
+      <div class="modal-head"><h2 id="readingLogTitle">Registrar leitura</h2><button type="button" class="icon-btn" data-close-dialog="#readingLogDialog" aria-label="Fechar">×</button></div>
+      <input id="readingLogBookId" type="hidden" />
+      <div class="context-row"><label for="readingLogPage">Página atual<input id="readingLogPage" type="number" min="0" max="99999" inputmode="numeric" /></label><label for="readingLogTotal">Total de páginas<input id="readingLogTotal" type="number" min="1" max="99999" inputmode="numeric" placeholder="Opcional" /></label></div>
+      <label for="readingLogNote">O que você quer guardar desta leitura? <span class="muted small">(opcional)</span></label>
+      <textarea id="readingLogNote" rows="6" maxlength="2000" placeholder="Uma ideia, trecho, resumo ou pergunta sua…"></textarea>
+      <label for="readingLogExcerpt">Trecho para ouvir ou explicar com IA <span class="muted small">(opcional)</span></label>
+      <textarea id="readingLogExcerpt" rows="5" maxlength="4000" placeholder="Cole aqui o trecho desta leitura que quer manter em foco…"></textarea>
+      <div class="button-row"><button class="primary-btn">Guardar registro</button><button type="button" class="secondary-btn" data-close-dialog="#readingLogDialog">Cancelar</button></div>
+    </form>
+  </dialog>
+  <dialog id="readingNotesDialog" class="modal-dialog" aria-labelledby="readingNotesTitle">
+    <div class="stack"><div class="modal-head"><h2 id="readingNotesTitle">Anotações</h2><button type="button" class="icon-btn" data-close-dialog="#readingNotesDialog" aria-label="Fechar">×</button></div><div id="readingNotesList" class="reading-notes-list"></div><div class="button-row"><button type="button" class="primary-btn" data-close-dialog="#readingNotesDialog">Fechar</button></div></div>
+  </dialog>
+
+  <div id="storageWarning" class="storage-warning hidden" role="alert"></div>
+  <div id="toast" class="toast" role="status"></div>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
