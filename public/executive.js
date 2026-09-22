@@ -20,7 +20,26 @@ export function initExecutive() {
   $('#brainDumpText').value=storage.get('brain_dump_draft','');
   $('#brainDumpText').addEventListener('input',()=>storage.set('brain_dump_draft',$('#brainDumpText').value.slice(0,4000)));
   function renderSettings() { const data=memory(); $('#xpTotal').textContent=`${data.rewards.total || 0} XP`; $('#gamificationToggle').checked=data.settings.gamification; $('#celebrationToggle').checked=data.settings.celebrations; $('#hideStarsToggle').checked=data.settings.hideConstellationDetails; $('#symbolEvolutionToggle').checked=data.settings.symbolEvolution; const level=!data.settings.symbolEvolution || !data.settings.gamification ? 0 : data.rewards.total>=500 ? 2 : data.rewards.total>=100 ? 1 : 0; document.querySelectorAll('.brand-logo').forEach(logo=>logo.dataset.focusLevel=String(level)); }
-  function chooseAction() { const list=orderedIdeas(ideas(),flow.energy); let candidates=list; if(flow.preference==='fun') candidates=list.filter(item=>item.type==='interest' || ['game','series'].includes(item.category)); if(flow.preference==='important') candidates=list.filter(item=>item.type==='obligation' || item.state==='in_progress'); if(!candidates.length) candidates=list; flow.action=localAction(candidates[flow.index % Math.max(1,candidates.length)],flow.energy,flow.minutes); flow.action.item=candidates[flow.index % Math.max(1,candidates.length)] || null; }
+  function chooseAction() {
+    const list=orderedIdeas(ideas(),flow.energy);
+    let candidates=list;
+    if(flow.preference==='fun') candidates=list.filter(item=>item.type==='interest' || ['game','series'].includes(item.category));
+    if(flow.preference==='important') candidates=list.filter(item=>item.type==='obligation' || item.state==='in_progress');
+    if(!candidates.length) candidates=list;
+    if(flow.index<candidates.length) {
+      const item=candidates[flow.index];
+      flow.action=localAction(item,flow.energy,flow.minutes);
+      flow.action.item=item;
+      return;
+    }
+    const generalOptions=[
+      {title:'Anote uma coisa',action:'Escreva em uma frase o que está ocupando sua cabeça.'},
+      {title:'Um parágrafo basta',action:'Abra um texto que você já queria ler e passe pelo primeiro parágrafo.'},
+      {title:'Prepare um começo',action:'Deixe ao alcance um objeto ou material que você poderia usar.'}
+    ];
+    const option=generalOptions[(flow.index-candidates.length)%generalOptions.length];
+    flow.action={...option,reason:'É só uma sugestão geral. Pode ignorar se não combinar.',item:null};
+  }
   function renderFlow(step='energy') { dialog.dataset.step=step; $$('.flow-step').forEach(node=>node.classList.toggle('hidden',node.dataset.step!==step)); if(step==='suggestion') { chooseAction(); $('#flowActionTitle').textContent=flow.action.title; $('#flowAction').textContent=flow.action.action; $('#flowReason').textContent=flow.action.reason; } }
   $('#stuckButton').addEventListener('click',()=> { flow={energy:'normal',minutes:10,preference:'any',index:0,action:null}; renderFlow('energy'); dialog.showModal(); });
   window.addEventListener('foco:start-focus', event => {
@@ -80,7 +99,13 @@ export function initExecutive() {
     $('#dumpReview').dataset.items=JSON.stringify(safe);
     $('#dumpReview').innerHTML=safe.length ? `<p class="muted small">${escapeHtml(note)}</p>${safe.map((item,index)=>`<label class="dump-item"><input type="checkbox" checked data-dump="${index}" /> <strong>${escapeHtml(item.name)}</strong><span class="dump-meta">${escapeHtml(item.category==='reading'?'Leitura':item.category==='game'?'Jogo':item.category==='series'?'Filme/série':'Geral')} · ${item.state==='in_progress'?'Em andamento':'Quero começar'}</span>${item.nextStep?`<span class="dump-meta">Próximo passo: ${escapeHtml(item.nextStep)}</span>`:''}</label>`).join('')}` : `<p class="muted">${escapeHtml(note || 'Não encontrei algo que pareça querer guardar.')}</p>`;
   }
-  $('#organizeDump').addEventListener('click',()=> { $('#dumpError').textContent=''; const text=$('#brainDumpText').value.trim(); if(!text) return; const items=text.split(/[\n.;]+/).map(part=>part.trim()).filter(part=>part.length>2).slice(0,5).map(name=>({name,type:'interest',category:'general',state:'start',progress:'',nextStep:''})); renderDumpReview(items,items.length?'Revise. Nada será adicionado até você escolher.':'Não encontrei uma ideia separada ainda.'); });
+  $('#organizeDump').addEventListener('click',()=> {
+    $('#dumpError').textContent='';
+    const text=$('#brainDumpText').value.trim();
+    if(!text) return;
+    const items=text.split(/\r?\n/).map(part=>part.replace(/^\s*(?:[-*•]\s+|\d+[.)]\s+)/,'').trim()).filter(part=>part.length>2).slice(0,5).map(name=>({name,type:'interest',category:'general',state:'start',progress:'',nextStep:''}));
+    renderDumpReview(items,items.length?'Revise. Nada será adicionado até você escolher.':'Não encontrei uma ideia separada ainda.');
+  });
   $('#organizeDumpAI').addEventListener('click',()=>busy($('#organizeDumpAI'),'Organizando…',async()=> {
     $('#dumpError').textContent='';
     const text=$('#brainDumpText').value.trim();
@@ -108,7 +133,7 @@ export function initExecutive() {
       ? events.map((event,index)=> {
           const names={start:'Começou uma microação',finish:'Encerrou uma sessão',resume:'Retomou uma atividade',checkpoint:'Registrou onde parou',reading:'Sessão de leitura',reflection:'Reflexão no diário'};
           const detail=data.settings.hideConstellationDetails ? 'Progresso registrado' : `${names[event.label] || 'Progresso registrado'} · ${event.amount} XP · ${new Date(event.createdAt).toLocaleString('pt-BR',{dateStyle:'medium',timeStyle:'short'})}`;
-          return `<button class="star" data-star-id="${escapeHtml(event.id)}" style="--x:${(index*37)%92+4}%;--y:${(index*61)%80+10}%" title="${escapeHtml(detail)}" aria-label="Estrela: ${escapeHtml(detail)}">✦</button>`;
+          return `<button class="star" data-star-id="${escapeHtml(event.id)}" style="--x:${(index*37)%82+4}%;--y:${(index*61)%64+8}%" title="${escapeHtml(detail)}" aria-label="Estrela: ${escapeHtml(detail)}">✦</button>`;
         }).join('')
       : '<p class="muted">Seus próximos passos vão aparecer aqui. Dias vazios não apagam estrelas.</p>';
     $$('[data-star-id]').forEach(button=>button.addEventListener('click',()=> {
