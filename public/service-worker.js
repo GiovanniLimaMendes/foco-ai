@@ -1,4 +1,4 @@
-const CACHE = 'foco-v4';
+const CACHE = 'foco-v5';
 const ASSETS = ['/','/index.html','/style.css','/app.js','/ai.js','/reading.js','/reading-model.js','/storage.js','/ui.js','/executive.js','/focus-core.js','/manifest.webmanifest','/icon-192.png','/icon-512.png','/foco-ai-logo.png'];
 self.addEventListener('install', event => event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS)).then(() => self.skipWaiting())));
 self.addEventListener('activate', event => event.waitUntil(self.clients.claim()));

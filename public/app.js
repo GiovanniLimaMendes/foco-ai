@@ -94,6 +94,7 @@ function renderIdeas() {
     <label>Tipo de coisa<select data-category="${escapeHtml(i.id)}">${Object.entries(categories).map(([v,l])=>`<option value="${v}" ${v === i.category ? 'selected':''}>${l}</option>`).join('')}</select></label>
     <label>Próximo pequeno passo (opcional)<input data-step="${escapeHtml(i.id)}" maxlength="240" value="${escapeHtml(i.nextStep)}" placeholder="Ex.: separar o material" /></label></div>
     ${categoryFields(i)}
+    <button class="primary-btn start-idea" data-start-focus="${escapeHtml(i.id)}">Começar por um tempo</button>
     </article>`).join('') || '<p class="muted">Sua cabeça está cheia de alguma coisa? Coloca aqui. Não precisa organizar ainda.</p>';
   $$('[data-delete]').forEach(btn=>btn.addEventListener('click',()=> {
     const item=ideas.find(i=>i.id===btn.dataset.delete);
@@ -104,6 +105,7 @@ $$('[data-state]').forEach(select=>select.addEventListener('change',()=> { ideas
   $$('[data-effort]').forEach(select=>select.addEventListener('change',()=> { ideas.find(i=>i.id===select.dataset.effort).effort=select.value; save(); invalidateSuggestion(); }));
   $$('[data-category]').forEach(select=>select.addEventListener('change',()=> { ideas.find(i=>i.id===select.dataset.category).category=select.value; save(); renderIdeas(); invalidateSuggestion(); }));
   $$('[data-step]').forEach(input=>input.addEventListener('change',()=> { ideas.find(i=>i.id===input.dataset.step).nextStep=input.value.trim(); save(); invalidateSuggestion(); }));
+  $$('[data-start-focus]').forEach(button=>button.addEventListener('click',()=> window.dispatchEvent(new CustomEvent('foco:start-focus',{detail:{id:button.dataset.startFocus}}))));
   $$('[data-log-reading]').forEach(button=>button.addEventListener('click',()=> openReadingLog(button.dataset.logReading)));
   $$('[data-view-reading-notes]').forEach(button=>button.addEventListener('click',()=> openReadingNotes(button.dataset.viewReadingNotes)));
   $$('[data-game-progress]').forEach(input=>input.addEventListener('change',()=> { ideas.find(i=>i.id===input.dataset.gameProgress).game.progress=input.value.trim(); save(); }));

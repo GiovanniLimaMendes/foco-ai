@@ -207,6 +207,7 @@ h1,h2,h3,p,.message { overflow-wrap:anywhere; }
 .idea-card h3 { padding-right:28px; }
 .idea-card .delete { width:44px; height:44px; top:4px; right:4px; color:var(--muted); }
 .idea-card { min-width:0; }
+.start-idea { width:100%; margin-top:16px; }
 .idea-controls { display:grid; gap:8px; margin-top:16px; }
 .idea-controls label { font-size:13px; color:var(--muted); }
 .idea-controls input,.idea-controls select { width:100%; }

@@ -15,12 +15,32 @@ function reward(kind, eventId) { const data=memory(); if (!data.settings.gamific
 
 export function initExecutive() {
   let flow = { energy:'normal', minutes:10, preference:'any', index:0, action:null };
-  let activeSession = null; let timer;
+  let activeSession = null; let selectedItem = null; let timer;
   const dialog = $('#stuckDialog'); const focusDialog = $('#focusDialog');
   function renderSettings() { const data=memory(); $('#xpTotal').textContent=`${data.rewards.total || 0} XP`; $('#gamificationToggle').checked=data.settings.gamification; $('#celebrationToggle').checked=data.settings.celebrations; $('#hideStarsToggle').checked=data.settings.hideConstellationDetails; }
   function chooseAction() { const list=orderedIdeas(ideas(),flow.energy); let candidates=list; if(flow.preference==='fun') candidates=list.filter(item=>item.type==='interest' || ['game','series'].includes(item.category)); if(flow.preference==='important') candidates=list.filter(item=>item.type==='obligation' || item.state==='in_progress'); if(!candidates.length) candidates=list; flow.action=localAction(candidates[flow.index % Math.max(1,candidates.length)],flow.energy,flow.minutes); flow.action.item=candidates[flow.index % Math.max(1,candidates.length)] || null; }
   function renderFlow(step='energy') { dialog.dataset.step=step; $$('.flow-step').forEach(node=>node.classList.toggle('hidden',node.dataset.step!==step)); if(step==='suggestion') { chooseAction(); $('#flowActionTitle').textContent=flow.action.title; $('#flowAction').textContent=flow.action.action; $('#flowReason').textContent=flow.action.reason; } }
   $('#stuckButton').addEventListener('click',()=> { flow={energy:'normal',minutes:10,preference:'any',index:0,action:null}; renderFlow('energy'); dialog.showModal(); });
+  window.addEventListener('foco:start-focus', event => {
+    const item=ideas().find(candidate=>candidate.id===event.detail?.id);
+    if (!item) return;
+    selectedItem=item;
+    $('#itemFocusTitle').textContent=item.text;
+    $('#itemCustomTime').value='';
+    $('#itemFocusDialog').showModal();
+  });
+  function startSelectedItem(minutes) {
+    if (!selectedItem) return;
+    const item=selectedItem;
+    selectedItem=null;
+    $('#itemFocusDialog').close();
+    flow.energy=item.preferredEnergy || (item.effort === 'light' ? 'low' : item.effort === 'deep' ? 'high' : 'normal');
+    const action=localAction(item,flow.energy,minutes);
+    action.item=item;
+    startSession(action,minutes);
+  }
+  $$('[data-item-focus-time]').forEach(button=>button.addEventListener('click',()=>startSelectedItem(Number(button.dataset.itemFocusTime))));
+  $('#itemCustomTime').addEventListener('change',()=>startSelectedItem(Math.max(1,Math.min(180,Number($('#itemCustomTime').value)||10))));
   $$('[data-flow-energy]').forEach(button=>button.addEventListener('click',()=> { flow.energy=button.dataset.flowEnergy; renderFlow('time'); }));
   $$('[data-flow-time]').forEach(button=>button.addEventListener('click',()=> { flow.minutes=Number(button.dataset.flowTime); renderFlow('preference'); }));
   $('#customTime').addEventListener('change',()=> { const value=Math.max(1,Math.min(180,Number($('#customTime').value)||10)); flow.minutes=value; renderFlow('preference'); });
@@ -31,9 +51,10 @@ export function initExecutive() {
   $('#startFlow').addEventListener('click',()=> { dialog.close(); startSession(flow.action, flow.minutes); });
   $$('[data-close-exec]').forEach(button=>button.addEventListener('click',()=> $(button.dataset.closeExec).close()));
   function startSession(action, minutes) { activeSession={ id:crypto.randomUUID(), itemId:action.item?.id || null, title:action.title, action:action.action, startedAt:now(), plannedMinutes:minutes, status:'active' }; $('#focusTitle').textContent=action.action; $('#focusTimer').textContent=`${String(minutes).padStart(2,'0')}:00`; $('#focusDialog').showModal(); if(action.item) { updateThing(action.item.id,{state:'in_progress',lastInteraction:now(),preferredEnergy:flow.energy,estimatedMinutes:minutes}); reward('start',`start:${activeSession.id}`); if(action.item.state==='paused') reward('resume',`resume:${activeSession.id}`); renderConstellation(); } startTimer(minutes*60); }
-  function startTimer(seconds) { clearInterval(timer); let remaining=seconds; timer=setInterval(()=> { remaining--; $('#focusTimer').textContent=`${String(Math.floor(Math.max(0,remaining)/60)).padStart(2,'0')}:${String(Math.max(0,remaining)%60).padStart(2,'0')}`; if(remaining<=0) { clearInterval(timer); $('#focusStatus').textContent='O tempo passou. Você pode concluir, pausar ou parar.'; } },1000); }
+  function startTimer(seconds) { clearInterval(timer); $('#extendFocus').classList.add('hidden'); $('#focusStatus').textContent='Você pode pausar ou parar quando quiser.'; let remaining=seconds; timer=setInterval(()=> { remaining--; $('#focusTimer').textContent=`${String(Math.floor(Math.max(0,remaining)/60)).padStart(2,'0')}:${String(Math.max(0,remaining)%60).padStart(2,'0')}`; if(remaining<=0) { clearInterval(timer); $('#focusStatus').textContent='Esse bloco terminou. Você decide o que fazer agora.'; $('#extendFocus').classList.remove('hidden'); } },1000); }
+  $$('[data-extend-focus]').forEach(button=>button.addEventListener('click',()=>startTimer(Number(button.dataset.extendFocus)*60)));
   $('#pauseFocus').addEventListener('click',()=> { clearInterval(timer); $('#focusStatus').textContent='Pausado. Você pode voltar quando fizer sentido.'; });
-  function finish(status) { if(!activeSession) return; clearInterval(timer); activeSession.status=status; activeSession.endedAt=now(); const data=memory(); data.sessions.unshift(activeSession); data.sessions=data.sessions.slice(0,250); save(data); if(status==='completed') reward('finish',`finish:${activeSession.id}`); if(activeSession.itemId) updateThing(activeSession.itemId,{lastInteraction:now(),lastStop:$('#whereStopped').value.trim().slice(0,300),nextStep:$('#nextAfterFocus').value.trim().slice(0,240)}); $('#focusDialog').close(); $('#feedbackDialog').showModal(); renderConstellation(); activeSession=null; }
+  function finish(status) { if(!activeSession) return; clearInterval(timer); $('#extendFocus').classList.add('hidden'); activeSession.status=status; activeSession.endedAt=now(); const data=memory(); data.sessions.unshift(activeSession); data.sessions=data.sessions.slice(0,250); save(data); if(status==='completed') reward('finish',`finish:${activeSession.id}`); if(activeSession.itemId) updateThing(activeSession.itemId,{lastInteraction:now(),lastStop:$('#whereStopped').value.trim().slice(0,300),nextStep:$('#nextAfterFocus').value.trim().slice(0,240)}); $('#focusDialog').close(); $('#feedbackDialog').showModal(); renderConstellation(); activeSession=null; }
   $('#completeFocus').addEventListener('click',()=>finish('completed')); $('#stopFocus').addEventListener('click',()=>finish('stopped'));
   $$('[data-feedback]').forEach(button=>button.addEventListener('click',()=> { const data=memory(); const session=data.sessions[0]; if(session && !session.feedback) { session.feedback=button.dataset.feedback; save(data); reward('checkpoint',`feedback:${session.id}`); } $('#feedbackDialog').close(); renderConstellation(); }));
   $('#saveTomorrow').addEventListener('click',()=> { const intention=$('#tomorrowIntention').value.trim(); if(!intention) return showToast('Escreva uma intenção pequena primeiro.'); const data=memory(); data.tomorrow={intention,when:$('#tomorrowWhen').value.trim(),where:$('#tomorrowWhere').value.trim(),createdAt:now()}; save(data); renderTomorrow(); showToast('Amanhã tem uma única intenção guardada.'); });
