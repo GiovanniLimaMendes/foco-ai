@@ -225,9 +225,10 @@ function renderSuggestion() {
   $('#startSuggestion').disabled=false;
   $('#startSuggestion').textContent='Começar →';
 }
-$('#helpMe').addEventListener('click',()=> {renderSuggestion(); $('#suggestionPanel').scrollIntoView({behavior:motion(),block:'nearest'});});
+const legacyHelp = $('#helpMe');
+if (legacyHelp) legacyHelp.addEventListener('click',()=> {renderSuggestion(); $('#suggestionPanel').scrollIntoView({behavior:motion(),block:'nearest'});});
 $('#skipSuggestion').addEventListener('click',()=> { suggestionIndex++; renderSuggestion(); });
-$('#closeSuggestion').addEventListener('click',()=> {$('#suggestionPanel').classList.add('hidden'); $('#helpMe').focus();});
+$('#closeSuggestion').addEventListener('click',()=> {$('#suggestionPanel').classList.add('hidden'); (legacyHelp || $('#stuckButton')).focus();});
 $('#stuckSuggestion').addEventListener('click',()=> {
   $('#suggestionTask').textContent='Por agora, só deixe o material ao seu alcance.';
   $('#suggestionReason').textContent='Não precisa fazer a atividade ainda. Só preparar o começo.';
