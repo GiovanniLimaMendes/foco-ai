@@ -25,7 +25,10 @@ let ideas = (Array.isArray(savedIdeas) ? savedIdeas : []).filter(i => i && typeo
   game: { progress: typeof i.game?.progress === 'string' ? i.game.progress.slice(0, 300) : '' },
   media: { progress: typeof i.media?.progress === 'string' ? i.media.progress.slice(0, 300) : '' },
   nextStep: typeof i.nextStep === 'string' ? i.nextStep.slice(0,240) : '',
-  lastInteraction: typeof i.lastInteraction === 'string' ? i.lastInteraction : null
+  lastInteraction: typeof i.lastInteraction === 'string' ? i.lastInteraction : null,
+  lastStop: typeof i.lastStop === 'string' ? i.lastStop.slice(0,300) : '',
+  preferredEnergy: ['low','normal','high'].includes(i.preferredEnergy) ? i.preferredEnergy : null,
+  estimatedMinutes: Number.isFinite(Number(i.estimatedMinutes)) ? Math.max(1,Math.min(180,Number(i.estimatedMinutes))) : null
 }));
 let energy = storage.get('energy','normal');
 if (!['low','normal','high'].includes(energy)) energy = 'normal';
@@ -73,6 +76,20 @@ $$('.energy').forEach(btn=>btn.addEventListener('click',()=> {
   $('#suggestionPanel').scrollIntoView({behavior:motion(),block:'nearest'});
 }));
 function typeLabel(type) { return type === 'project' ? 'PROJETO' : type === 'obligation' ? 'PRECISO FAZER':'QUERO FAZER'; }
+function itemSessionHistory(item) {
+  const sessions=storage.get('executive_memory',{sessions:[]})?.sessions;
+  return Array.isArray(sessions) ? sessions.filter(session=>session?.itemId===item.id).slice(0,8) : [];
+}
+function renderSessionHistory(item) {
+  const sessions=itemSessionHistory(item);
+  if (!sessions.length) return '';
+  return `<details class="item-history"><summary>Ver últimos começos</summary><div class="session-history">${sessions.map(session=>{
+    const date=Number.isFinite(Date.parse(session.endedAt || session.startedAt)) ? new Date(session.endedAt || session.startedAt).toLocaleString('pt-BR',{dateStyle:'medium',timeStyle:'short'}) : 'Data não disponível';
+    const duration=Number.isFinite(session.plannedMinutes) ? `${session.plannedMinutes} min` : 'Duração não registrada';
+    const result=session.status==='completed' ? 'Bloco concluído' : session.status==='stopped' ? 'Sessão encerrada' : 'Sessão registrada';
+    return `<article class="session-entry"><p class="session-meta">${escapeHtml(date)} · ${duration} · ${result}</p><p>${escapeHtml(session.action || session.title || item.text)}</p>${session.lastStop ? `<p class="muted">Parou em: ${escapeHtml(session.lastStop)}</p>`:''}${session.nextStep ? `<p class="muted">Próximo passo: ${escapeHtml(session.nextStep)}</p>`:''}</article>`;
+  }).join('')}</div></details>`;
+}
 function categoryFields(item) {
   if (item.category === 'reading') {
     const pages = item.book.totalPages ? `Página ${item.book.currentPage} de ${item.book.totalPages}` : item.book.currentPage ? `Você parou na página ${item.book.currentPage}` : 'Você ainda não registrou uma página';
@@ -89,12 +106,14 @@ function renderIdeas() {
     <button class="delete" data-delete="${escapeHtml(i.id)}" aria-label="Remover ${escapeHtml(i.text)}">×</button>
     <div class="idea-type">${typeLabel(i.type)} · ${categories[i.category]}</div><h3>${escapeHtml(i.text)}</h3>
     <p>${i.lastStop ? `Você parou em: ${escapeHtml(i.lastStop)}` : i.lastInteraction && Number.isFinite(Date.parse(i.lastInteraction)) ? 'Último começo: '+new Date(i.lastInteraction).toLocaleDateString('pt-BR') : 'Um interesse seu. Sem pressa.'}</p>
+    ${i.estimatedMinutes || i.preferredEnergy ? `<p class="memory-meta">${i.estimatedMinutes ? `Bloco habitual: ${i.estimatedMinutes} min` : ''}${i.estimatedMinutes && i.preferredEnergy ? ' · ' : ''}${i.preferredEnergy ? `Energia ${i.preferredEnergy==='low'?'baixa':i.preferredEnergy==='high'?'alta':'média'}` : ''}</p>`:''}
     <div class="idea-controls"><label>Estado<select data-state="${escapeHtml(i.id)}">${Object.entries(states).map(([v,l])=>`<option value="${v}" ${v === i.state ? 'selected':''}>${l}</option>`).join('')}</select></label>
     <label>Combina mais com<select data-effort="${escapeHtml(i.id)}"><option value="light" ${i.effort === 'light' ? 'selected':''}>Energia baixa · algo leve</option><option value="regular" ${i.effort === 'regular' ? 'selected':''}>Energia média</option><option value="deep" ${i.effort === 'deep' ? 'selected':''}>Energia alta · mais fôlego</option></select></label>
     <label>Tipo de coisa<select data-category="${escapeHtml(i.id)}">${Object.entries(categories).map(([v,l])=>`<option value="${v}" ${v === i.category ? 'selected':''}>${l}</option>`).join('')}</select></label>
     <label>Próximo pequeno passo (opcional)<input data-step="${escapeHtml(i.id)}" maxlength="240" value="${escapeHtml(i.nextStep)}" placeholder="Ex.: separar o material" /></label></div>
     ${categoryFields(i)}
     <button class="primary-btn start-idea" data-start-focus="${escapeHtml(i.id)}">Começar por um tempo</button>
+    ${renderSessionHistory(i)}
     </article>`).join('') || '<p class="muted">Sua cabeça está cheia de alguma coisa? Coloca aqui. Não precisa organizar ainda.</p>';
   $$('[data-delete]').forEach(btn=>btn.addEventListener('click',()=> {
     const item=ideas.find(i=>i.id===btn.dataset.delete);
@@ -152,7 +171,11 @@ $$('[data-close-dialog]').forEach(button => button.addEventListener('click', () 
 window.addEventListener('foco:open-reading-log', event => openReadingLog(event.detail));
 window.addEventListener('foco:open-reading-notes', event => openReadingNotes(event.detail));
 function renderPreview() {
-  $('#ideaPreview').innerHTML = ideas.slice(0,4).map(i=>`<span class="idea-chip">${escapeHtml(i.text)}</span>`).join('') || '<p class="muted small">Guarde uma ideia em “Minhas coisas”. Ela pode virar um começo pequeno.</p>';
+  const resumable=ideas.filter(item=>['in_progress','paused','active'].includes(item.state)).sort((a,b)=>Date.parse(b.lastInteraction || 0)-Date.parse(a.lastInteraction || 0))[0];
+  const resume=resumable ? `<div class="resume-nudge"><div><p class="card-label">VOCÊ PODE RETOMAR</p><strong>${escapeHtml(resumable.text)}</strong><p class="muted small">${escapeHtml(resumable.lastStop || resumable.nextStep || 'Escolha um tempo e continue de onde fizer sentido.')}</p></div><button class="secondary-btn" data-home-resume="${escapeHtml(resumable.id)}">Escolher tempo</button></div>` : '';
+  const chips=ideas.slice(0,4).map(i=>`<span class="idea-chip">${escapeHtml(i.text)}</span>`).join('');
+  $('#ideaPreview').innerHTML = `${resume}${chips ? `<div class="idea-chips">${chips}</div>`:''}` || '<p class="muted small">Guarde uma ideia em “Minhas coisas”. Ela pode virar um começo pequeno.</p>';
+  $$('[data-home-resume]').forEach(button=>button.addEventListener('click',()=>window.dispatchEvent(new CustomEvent('foco:start-focus',{detail:{id:button.dataset.homeResume}}))));
 }
 $('#addIdea').addEventListener('click',()=> {
   const input=$('#ideaInput'); const text=input.value.trim();

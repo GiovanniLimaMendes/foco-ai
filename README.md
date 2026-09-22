@@ -68,7 +68,7 @@ As rotas validam o tamanho das entradas e nunca enviam a chave ao navegador. O b
 
 - Ciclo “Estou travado”: energia, tempo, preferência opcional, uma microação local compatível e redução para um começo ainda menor.
 - Sessão de foco opcional, com pausa, conclusão, ponto de parada, próximo passo e feedback discreto.
-- Memória externa em localStorage versionado: sessões, retomadas, intenção de amanhã e Brain Dump com revisão antes de salvar.
+- Memória externa em localStorage versionado: retoma sessões após fechar/recarregar, guarda ponto de parada e próximo passo enquanto a sessão está aberta, mostra histórico de até oito começos em cada coisa, além de energia/duração preferidas, intenção de amanhã e Brain Dump com revisão antes de salvar.
 - Gamificação gentil opcional: XP por eventos confirmados, constelação de sessões e sem streaks, ranking ou perda por ausência.
 - Minhas coisas com estado (incluindo Em andamento), próximo passo e persistência local. A IA classifica itens confirmados como leitura, jogo, filme/série ou geral; livros guardam registros de página e anotações locais em um histórico, e jogos guardam onde você parou.
 - Leitura vinculada aos livros em Minhas coisas: trecho salvo por livro, sessão curta, voz do navegador e explicação opcional por IA.

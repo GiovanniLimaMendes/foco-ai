@@ -5,8 +5,8 @@ import { XP, award, orderedIdeas, localAction } from './focus-core.js';
 const KEY = 'executive_memory';
 const now = () => new Date().toISOString();
 function memory() {
-  const saved = storage.migrate(KEY, 2, value => ({ ...(value || {}), sessions:Array.isArray(value?.sessions) ? value.sessions : [], rewards:value?.rewards || { total:0, events:[] }, settings:value?.settings || {}, brainDump:Array.isArray(value?.brainDump) ? value.brainDump : [] }));
-  return { version:2, sessions:Array.isArray(saved.sessions) ? saved.sessions : [], rewards:saved.rewards || { total:0, events:[] }, settings:{ gamification:saved.settings?.gamification !== false, celebrations:saved.settings?.celebrations !== false, hideConstellationDetails:!!saved.settings?.hideConstellationDetails }, tomorrow:saved.tomorrow || null, brainDump:Array.isArray(saved.brainDump) ? saved.brainDump : [] };
+  const saved = storage.migrate(KEY, 3, value => ({ ...(value || {}), sessions:Array.isArray(value?.sessions) ? value.sessions : [], rewards:value?.rewards || { total:0, events:[] }, settings:value?.settings || {}, brainDump:Array.isArray(value?.brainDump) ? value.brainDump : [], activeSession:value?.activeSession || null }));
+  return { version:3, sessions:Array.isArray(saved.sessions) ? saved.sessions : [], rewards:saved.rewards || { total:0, events:[] }, settings:{ gamification:saved.settings?.gamification !== false, celebrations:saved.settings?.celebrations !== false, hideConstellationDetails:!!saved.settings?.hideConstellationDetails }, tomorrow:saved.tomorrow || null, brainDump:Array.isArray(saved.brainDump) ? saved.brainDump : [], activeSession:saved.activeSession || null };
 }
 function save(value) { storage.set(KEY, value); return value; }
 function ideas() { return storage.get('ideas', []); }
@@ -50,11 +50,15 @@ export function initExecutive() {
   $('#dismissFlow').addEventListener('click',()=>dialog.close());
   $('#startFlow').addEventListener('click',()=> { dialog.close(); startSession(flow.action, flow.minutes); });
   $$('[data-close-exec]').forEach(button=>button.addEventListener('click',()=> $(button.dataset.closeExec).close()));
-  function startSession(action, minutes) { activeSession={ id:crypto.randomUUID(), itemId:action.item?.id || null, title:action.title, action:action.action, startedAt:now(), plannedMinutes:minutes, status:'active' }; $('#focusTitle').textContent=action.action; $('#focusTimer').textContent=`${String(minutes).padStart(2,'0')}:00`; $('#focusDialog').showModal(); if(action.item) { updateThing(action.item.id,{state:'in_progress',lastInteraction:now(),preferredEnergy:flow.energy,estimatedMinutes:minutes}); reward('start',`start:${activeSession.id}`); if(action.item.state==='paused') reward('resume',`resume:${activeSession.id}`); renderConstellation(); } startTimer(minutes*60); }
-  function startTimer(seconds) { clearInterval(timer); $('#extendFocus').classList.add('hidden'); $('#focusStatus').textContent='Você pode pausar ou parar quando quiser.'; let remaining=seconds; timer=setInterval(()=> { remaining--; $('#focusTimer').textContent=`${String(Math.floor(Math.max(0,remaining)/60)).padStart(2,'0')}:${String(Math.max(0,remaining)%60).padStart(2,'0')}`; if(remaining<=0) { clearInterval(timer); $('#focusStatus').textContent='Esse bloco terminou. Você decide o que fazer agora.'; $('#extendFocus').classList.remove('hidden'); } },1000); }
+  function persistActiveSession() { const data=memory(); data.activeSession=activeSession; save(data); }
+  function startSession(action, minutes) { const item=action.item; activeSession={ id:crypto.randomUUID(), itemId:item?.id || null, title:action.title, action:action.action, startedAt:now(), plannedMinutes:minutes, status:'active', lastStop:item?.lastStop || '', nextStep:item?.nextStep || '', timerEndsAt:Date.now()+minutes*60000 }; $('#whereStopped').value=activeSession.lastStop; $('#nextAfterFocus').value=activeSession.nextStep; $('#focusTitle').textContent=action.action; $('#focusTimer').textContent=`${String(minutes).padStart(2,'0')}:00`; $('#focusDialog').showModal(); persistActiveSession(); if(item) { updateThing(item.id,{state:'in_progress',lastInteraction:now(),preferredEnergy:flow.energy,estimatedMinutes:minutes}); reward('start',`start:${activeSession.id}`); if(item.state==='paused') reward('resume',`resume:${activeSession.id}`); renderConstellation(); } startTimer(minutes*60); }
+  function startTimer(seconds) { clearInterval(timer); $('#extendFocus').classList.add('hidden'); $('#resumeFocus').classList.add('hidden'); $('#focusStatus').textContent='Você pode pausar ou parar quando quiser.'; let remaining=Math.max(0,Math.ceil(seconds)); if(activeSession) { activeSession.status='active'; activeSession.remainingSeconds=null; activeSession.timerEndsAt=Date.now()+remaining*1000; persistActiveSession(); } const draw=()=>$('#focusTimer').textContent=`${String(Math.floor(remaining/60)).padStart(2,'0')}:${String(remaining%60).padStart(2,'0')}`; draw(); timer=setInterval(()=> { remaining=Math.max(0,Math.ceil((activeSession.timerEndsAt-Date.now())/1000)); draw(); if(remaining<=0) { clearInterval(timer); activeSession.status='waiting'; activeSession.timerEndsAt=null; activeSession.remainingSeconds=0; persistActiveSession(); $('#focusStatus').textContent='Esse bloco terminou. Você decide o que fazer agora.'; $('#extendFocus').classList.remove('hidden'); } },1000); }
   $$('[data-extend-focus]').forEach(button=>button.addEventListener('click',()=> { const minutes=Number(button.dataset.extendFocus); if(activeSession) activeSession.plannedMinutes+=minutes; startTimer(minutes*60); }));
-  $('#pauseFocus').addEventListener('click',()=> { clearInterval(timer); $('#focusStatus').textContent='Pausado. Você pode voltar quando fizer sentido.'; });
-  function finish(status) { if(!activeSession) return; clearInterval(timer); $('#extendFocus').classList.add('hidden'); activeSession.status=status; activeSession.endedAt=now(); const data=memory(); data.sessions.unshift(activeSession); data.sessions=data.sessions.slice(0,250); save(data); if(status==='completed') reward('finish',`finish:${activeSession.id}`); if(activeSession.itemId) updateThing(activeSession.itemId,{lastInteraction:now(),lastStop:$('#whereStopped').value.trim().slice(0,300),nextStep:$('#nextAfterFocus').value.trim().slice(0,240)}); $('#focusDialog').close(); $('#feedbackDialog').showModal(); renderConstellation(); activeSession=null; }
+  $('#whereStopped').addEventListener('input',()=> { if(activeSession) { activeSession.lastStop=$('#whereStopped').value.slice(0,300); persistActiveSession(); } });
+  $('#nextAfterFocus').addEventListener('input',()=> { if(activeSession) { activeSession.nextStep=$('#nextAfterFocus').value.slice(0,240); persistActiveSession(); } });
+  $('#pauseFocus').addEventListener('click',()=> { if(!activeSession) return; const remaining=Math.max(0,Math.ceil((Number(activeSession.timerEndsAt)-Date.now())/1000)); clearInterval(timer); activeSession.status=remaining ? 'paused':'waiting'; activeSession.remainingSeconds=remaining; activeSession.timerEndsAt=null; persistActiveSession(); $('#focusTimer').textContent=`${String(Math.floor(remaining/60)).padStart(2,'0')}:${String(remaining%60).padStart(2,'0')}`; $('#focusStatus').textContent=remaining ? 'Pausado. Você pode retomar esse mesmo bloco quando fizer sentido.' : 'Esse bloco terminou. Você decide o que fazer agora.'; if(remaining) $('#resumeFocus').classList.remove('hidden'); else $('#extendFocus').classList.remove('hidden'); });
+  $('#resumeFocus').addEventListener('click',()=> { if(activeSession?.remainingSeconds) startTimer(activeSession.remainingSeconds); });
+  function finish(status) { if(!activeSession) return; clearInterval(timer); $('#extendFocus').classList.add('hidden'); activeSession.lastStop=$('#whereStopped').value.trim().slice(0,300); activeSession.nextStep=$('#nextAfterFocus').value.trim().slice(0,240); activeSession.status=status; activeSession.endedAt=now(); const data=memory(); data.sessions.unshift(activeSession); data.sessions=data.sessions.slice(0,250); data.activeSession=null; save(data); if(status==='completed') reward('finish',`finish:${activeSession.id}`); if(activeSession.itemId) { const item=ideas().find(candidate=>candidate.id===activeSession.itemId); updateThing(activeSession.itemId,{lastInteraction:now(),lastStop:activeSession.lastStop || item?.lastStop || '',nextStep:activeSession.nextStep || item?.nextStep || ''}); } $('#focusDialog').close(); $('#feedbackDialog').showModal(); renderConstellation(); activeSession=null; }
   $('#completeFocus').addEventListener('click',()=>finish('completed')); $('#stopFocus').addEventListener('click',()=>finish('stopped'));
   $$('[data-feedback]').forEach(button=>button.addEventListener('click',()=> { const data=memory(); const session=data.sessions[0]; if(session && !session.feedback) { session.feedback=button.dataset.feedback; save(data); reward('checkpoint',`feedback:${session.id}`); } $('#feedbackDialog').close(); renderConstellation(); }));
   $('#saveTomorrow').addEventListener('click',()=> { const intention=$('#tomorrowIntention').value.trim(); if(!intention) return showToast('Escreva uma intenção pequena primeiro.'); const data=memory(); data.tomorrow={intention,when:$('#tomorrowWhen').value.trim(),where:$('#tomorrowWhere').value.trim(),createdAt:now()}; save(data); renderTomorrow(); showToast('Amanhã tem uma única intenção guardada.'); });
@@ -74,5 +78,29 @@ export function initExecutive() {
   $('#gamificationToggle').addEventListener('change',()=> { const data=memory(); data.settings.gamification=$('#gamificationToggle').checked; save(data); renderSettings(); });
   $('#celebrationToggle').addEventListener('change',()=> { const data=memory(); data.settings.celebrations=$('#celebrationToggle').checked; save(data); });
   $('#hideStarsToggle').addEventListener('change',()=> { const data=memory(); data.settings.hideConstellationDetails=$('#hideStarsToggle').checked; save(data); });
+  function restoreSession() {
+    const saved=memory().activeSession;
+    if (!saved || !saved.id || !['active','paused','waiting'].includes(saved.status)) return;
+    activeSession=saved;
+    $('#focusTitle').textContent=saved.action || saved.title || 'Sua atividade';
+    $('#whereStopped').value=saved.lastStop || '';
+    $('#nextAfterFocus').value=saved.nextStep || '';
+    $('#focusDialog').showModal();
+    if(saved.status==='active') {
+      const remaining=Math.ceil((Number(saved.timerEndsAt)-Date.now())/1000);
+      if(remaining>0) startTimer(remaining);
+      else { activeSession.status='waiting'; activeSession.timerEndsAt=null; persistActiveSession(); $('#focusStatus').textContent='Esse bloco terminou enquanto o app estava fechado.'; $('#extendFocus').classList.remove('hidden'); $('#focusTimer').textContent='00:00'; }
+    } else if(saved.status==='waiting') {
+      $('#focusStatus').textContent='Esse bloco terminou. Você decide o que fazer agora.';
+      $('#extendFocus').classList.remove('hidden');
+      $('#focusTimer').textContent='00:00';
+    } else {
+      const remaining=Math.max(0,Number(saved.remainingSeconds)||0);
+      $('#focusTimer').textContent=`${String(Math.floor(remaining/60)).padStart(2,'0')}:${String(remaining%60).padStart(2,'0')}`;
+      if(remaining) { $('#focusStatus').textContent='Sessão pausada. Você pode retomar esse mesmo bloco ou encerrar.'; $('#resumeFocus').classList.remove('hidden'); }
+      else { $('#focusStatus').textContent='Sessão pausada. Você pode continuar por mais um bloco ou encerrar.'; $('#extendFocus').classList.remove('hidden'); }
+    }
+  }
   renderSettings(); renderTomorrow(); renderConstellation();
+  restoreSession();
 }

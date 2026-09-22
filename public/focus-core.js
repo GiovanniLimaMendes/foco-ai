@@ -9,7 +9,7 @@ export function award(state, eventId, amount, label) {
 }
 
 export function orderedIdeas(ideas, energy) {
-  const available = (Array.isArray(ideas) ? ideas : []).filter(item => item && ['start','in_progress','active'].includes(item.state));
+  const available = (Array.isArray(ideas) ? ideas : []).filter(item => item && ['start','in_progress','active','paused'].includes(item.state));
   const order = { low:['light','regular','deep'], normal:['regular','light','deep'], high:['deep','regular','light'] }[energy] || ['regular','light','deep'];
   return order.flatMap(effort => available.filter(item => (item.effort || 'regular') === effort));
 }

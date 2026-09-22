@@ -15,6 +15,11 @@ test('energia média prioriza itens médios e depois leves', () => {
   assert.deepEqual(orderedIdeas(items, 'normal').map(item => item.id), ['b','a','c']);
 });
 
+test('itens pausados continuam disponíveis para retomada', () => {
+  const items = [{ id:'paused', state:'paused', effort:'regular' }, { id:'someday', state:'someday', effort:'regular' }];
+  assert.deepEqual(orderedIdeas(items, 'normal').map(item => item.id), ['paused']);
+});
+
 test('sugestão local retoma o ponto de um jogo', () => {
   const action = localAction({ text:'Jogo', category:'game', game:{progress:'capítulo 3'}, state:'start' }, 'normal', 10);
   assert.match(action.action, /capítulo 3/);
