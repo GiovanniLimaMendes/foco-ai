@@ -411,6 +411,11 @@ button:active { opacity:.82; }
 .quick-capture-dialog h2 { max-width:290px; line-height:1.25; }
 .quick-capture-dialog .button-row { margin-top:4px; }
 .quick-capture-dialog .button-row > button { min-height:48px; }
+.backup-tools { display:grid; gap:8px; border-top:1px solid var(--line); padding-top:16px; }
+.backup-tools .card-label,.backup-tools .muted { margin:0; }
+.backup-tools .button-row { margin-top:4px; }
+.backup-tools button { min-height:44px; }
+.backup-tools #backupStatus:empty { display:none; }
 @media (max-width:900px) {
   .quick-capture-btn { right:16px; bottom:calc(88px + env(safe-area-inset-bottom)); width:56px; min-height:56px; padding:0; justify-content:center; }
   .quick-capture-btn .quick-capture-label { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }

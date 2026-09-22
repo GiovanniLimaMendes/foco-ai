@@ -34,8 +34,35 @@ export function orderedIdeas(ideas, energy) {
   return order.flatMap(effort => available.filter(item => (item.effort || 'regular') === effort));
 }
 
-export function localAction(item, energy, minutes) {
+export function latestItemFeedback(sessions, itemId) {
+  if (!itemId || !Array.isArray(sessions)) return null;
+  return sessions.slice(0, 10).find(session => session?.itemId === itemId && ['yes', 'somewhat', 'no'].includes(session.feedback)) || null;
+}
+
+export function deferRecentlyNotFit(items, sessions) {
+  const list = Array.isArray(items) ? items : [];
+  const latest = new Map();
+  if (Array.isArray(sessions)) {
+    for (const session of sessions.slice(0, 10)) {
+      if (session?.itemId && !latest.has(session.itemId) && ['yes', 'somewhat', 'no'].includes(session.feedback)) latest.set(session.itemId, session);
+    }
+  }
+  const alternatives = list.filter(item => latest.get(item.id)?.feedbackReason !== 'not_fit');
+  return alternatives.length ? alternatives : list;
+}
+
+export function localAction(item, energy, minutes, previousFeedback = null) {
   if (!item) return { title:'Escolha algo bem pequeno', action:'Anote uma coisa que está ocupando sua cabeça.', reason:'Não precisa decidir o resto do dia.' };
+  if (previousFeedback?.feedbackReason === 'too_big') {
+    const point = item.category === 'reading' && item.book?.currentPage
+      ? `Abra ${item.text} na página ${item.book.currentPage + 1} e leia uma frase.`
+      : item.category === 'game' && item.game?.progress
+        ? `Abra ${item.text} no ponto em que parou (${item.game.progress}) e só confira onde continuar.`
+        : item.category === 'series' && item.media?.progress
+          ? `Abra ${item.text} onde parou (${item.media.progress}) e só encontre o episódio.`
+          : `Só abra ${item.text} e deixe na tela por um instante.`;
+    return { title:item.text, action:point, reason:'Da última vez, esse começo pareceu grande. Deixei o primeiro passo menor.' };
+  }
   const point = item.category === 'reading' && item.book?.currentPage ? `Abra na página ${item.book.currentPage + 1} e leia um parágrafo.`
     : item.category === 'game' && item.game?.progress ? `Abra e continue de onde parou: ${item.game.progress}.`
     : item.category === 'series' && item.media?.progress ? `Abra e continue de onde parou: ${item.media.progress}.`

@@ -1,6 +1,6 @@
 import { storage } from './storage.js';
 import { $, $$, busy, escapeHtml, requestAI, showToast } from './ui.js';
-import { XP, award, orderedIdeas, localAction, earnedAchievements } from './focus-core.js';
+import { XP, award, orderedIdeas, localAction, latestItemFeedback, deferRecentlyNotFit, earnedAchievements } from './focus-core.js';
 
 const KEY = 'executive_memory';
 const now = () => new Date().toISOString();
@@ -15,20 +15,21 @@ function reward(kind, eventId) { const data=memory(); if (!data.settings.gamific
 
 export function initExecutive() {
   let flow = { energy:'normal', minutes:10, preference:'any', index:0, action:null };
-  let activeSession = null; let selectedItem = null; let timer;
+  let activeSession = null; let selectedItem = null; let feedbackSessionId = null; let timer;
   const dialog = $('#stuckDialog'); const focusDialog = $('#focusDialog');
   $('#brainDumpText').value=storage.get('brain_dump_draft','');
   $('#brainDumpText').addEventListener('input',()=>storage.set('brain_dump_draft',$('#brainDumpText').value.slice(0,4000)));
   function renderSettings() { const data=memory(); $('#xpTotal').textContent=`${data.rewards.total || 0} XP`; $('#gamificationToggle').checked=data.settings.gamification; $('#celebrationToggle').checked=data.settings.celebrations; $('#hideStarsToggle').checked=data.settings.hideConstellationDetails; $('#symbolEvolutionToggle').checked=data.settings.symbolEvolution; const level=!data.settings.symbolEvolution || !data.settings.gamification ? 0 : data.rewards.total>=500 ? 2 : data.rewards.total>=100 ? 1 : 0; document.querySelectorAll('.brand-logo').forEach(logo=>logo.dataset.focusLevel=String(level)); }
   function chooseAction() {
-    const list=orderedIdeas(ideas(),flow.energy);
+    const data=memory();
+    const list=deferRecentlyNotFit(orderedIdeas(ideas(),flow.energy),data.sessions);
     let candidates=list;
     if(flow.preference==='fun') candidates=list.filter(item=>item.type==='interest' || ['game','series'].includes(item.category));
     if(flow.preference==='important') candidates=list.filter(item=>item.type==='obligation' || item.state==='in_progress');
     if(!candidates.length) candidates=list;
     if(flow.index<candidates.length) {
       const item=candidates[flow.index];
-      flow.action=localAction(item,flow.energy,flow.minutes);
+      flow.action=localAction(item,flow.energy,flow.minutes,latestItemFeedback(data.sessions,item.id));
       flow.action.item=item;
       return;
     }
@@ -56,7 +57,7 @@ export function initExecutive() {
     selectedItem=null;
     $('#itemFocusDialog').close();
     flow.energy=item.preferredEnergy || (item.effort === 'light' ? 'low' : item.effort === 'deep' ? 'high' : 'normal');
-    const action=localAction(item,flow.energy,minutes);
+    const action=localAction(item,flow.energy,minutes,latestItemFeedback(memory().sessions,item.id));
     action.item=item;
     startSession(action,minutes);
   }
@@ -79,9 +80,28 @@ export function initExecutive() {
   $('#nextAfterFocus').addEventListener('input',()=> { if(activeSession) { activeSession.nextStep=$('#nextAfterFocus').value.slice(0,240); persistActiveSession(); } });
   $('#pauseFocus').addEventListener('click',()=> { if(!activeSession) return; const remaining=Math.max(0,Math.ceil((Number(activeSession.timerEndsAt)-Date.now())/1000)); clearInterval(timer); activeSession.status=remaining ? 'paused':'waiting'; activeSession.remainingSeconds=remaining; activeSession.timerEndsAt=null; persistActiveSession(); $('#focusTimer').textContent=`${String(Math.floor(remaining/60)).padStart(2,'0')}:${String(remaining%60).padStart(2,'0')}`; $('#focusStatus').textContent=remaining ? 'Pausado. Você pode retomar esse mesmo bloco quando fizer sentido.' : 'Esse bloco terminou. Você decide o que fazer agora.'; if(remaining) $('#resumeFocus').classList.remove('hidden'); else $('#extendFocus').classList.remove('hidden'); });
   $('#resumeFocus').addEventListener('click',()=> { if(activeSession?.remainingSeconds) startTimer(activeSession.remainingSeconds); });
-  function finish(status) { if(!activeSession) return; clearInterval(timer); $('#extendFocus').classList.add('hidden'); activeSession.lastStop=$('#whereStopped').value.trim().slice(0,300); activeSession.nextStep=$('#nextAfterFocus').value.trim().slice(0,240); activeSession.status=status; activeSession.endedAt=now(); const finished=activeSession; const data=memory(); data.sessions.unshift(finished); data.sessions=data.sessions.slice(0,250); data.activeSession=null; if(status==='completed' && finished.category==='reading' && data.settings.gamification) data.stats.readingSessions=(data.stats.readingSessions||0)+1; save(data); reward('finish',`finish:${finished.id}`); if(status==='completed' && finished.category==='reading') reward('reading',`reading:${finished.id}`); if(finished.lastStop) reward('checkpoint',`checkpoint:${finished.id}`); if(finished.itemId) { const item=ideas().find(candidate=>candidate.id===finished.itemId); updateThing(finished.itemId,{lastInteraction:now(),lastStop:finished.lastStop || item?.lastStop || '',nextStep:finished.nextStep || item?.nextStep || ''}); } $('#focusDialog').close(); $('#feedbackDialog').showModal(); renderConstellation(); activeSession=null; }
+  function finish(status) { if(!activeSession) return; clearInterval(timer); $('#extendFocus').classList.add('hidden'); activeSession.lastStop=$('#whereStopped').value.trim().slice(0,300); activeSession.nextStep=$('#nextAfterFocus').value.trim().slice(0,240); activeSession.status=status; activeSession.endedAt=now(); const finished=activeSession; const data=memory(); data.sessions.unshift(finished); data.sessions=data.sessions.slice(0,250); data.activeSession=null; if(status==='completed' && finished.category==='reading' && data.settings.gamification) data.stats.readingSessions=(data.stats.readingSessions||0)+1; save(data); reward('finish',`finish:${finished.id}`); if(status==='completed' && finished.category==='reading') reward('reading',`reading:${finished.id}`); if(finished.lastStop) reward('checkpoint',`checkpoint:${finished.id}`); if(finished.itemId) { const item=ideas().find(candidate=>candidate.id===finished.itemId); updateThing(finished.itemId,{lastInteraction:now(),lastStop:finished.lastStop || item?.lastStop || '',nextStep:finished.nextStep || item?.nextStep || ''}); } feedbackSessionId=finished.id; $('#feedbackMain').classList.remove('hidden'); $('#feedbackDetails').classList.add('hidden'); $('#feedbackStatus').textContent=''; $('#focusDialog').close(); $('#feedbackDialog').showModal(); renderConstellation(); activeSession=null; }
   $('#completeFocus').addEventListener('click',()=>finish('completed')); $('#stopFocus').addEventListener('click',()=>finish('stopped'));
-  $$('[data-feedback]').forEach(button=>button.addEventListener('click',()=> { const data=memory(); const session=data.sessions[0]; if(session && !session.feedback) { session.feedback=button.dataset.feedback; save(data); } $('#feedbackDialog').close(); renderAchievements(true); }));
+  function closeFeedback() { $('#feedbackDialog').close(); feedbackSessionId=null; renderAchievements(true); }
+  $$('[data-feedback]').forEach(button=>button.addEventListener('click',()=> {
+    const data=memory();
+    const session=data.sessions.find(entry=>entry.id===feedbackSessionId);
+    if(session && !session.feedback) { session.feedback=button.dataset.feedback; save(data); }
+    if(button.dataset.feedback==='yes') return closeFeedback();
+    $('#feedbackMain').classList.add('hidden');
+    $('#feedbackDetails').classList.remove('hidden');
+    $('#feedbackStatus').textContent='Seu feedback foi guardado neste navegador. Se quiser, escolha o que ajudaria na próxima vez.';
+    $('#feedbackDetails [data-feedback-reason]').focus();
+  }));
+  $$('[data-feedback-reason]').forEach(button=>button.addEventListener('click',()=> {
+    const data=memory();
+    const session=data.sessions.find(entry=>entry.id===feedbackSessionId);
+    if(session) { session.feedbackReason=button.dataset.feedbackReason; save(data); }
+    const message=button.dataset.feedbackReason==='too_big' ? 'Vou deixar os próximos começos menores.' : 'Vou dar espaço para outras atividades nas próximas sugestões.';
+    closeFeedback();
+    showToast(message);
+  }));
+  $('#skipFeedbackDetail').addEventListener('click',closeFeedback);
   $('#saveTomorrow').addEventListener('click',()=> { const intention=$('#tomorrowIntention').value.trim(); if(!intention) return showToast('Escreva uma intenção pequena primeiro.'); const data=memory(); data.tomorrow={intention,when:$('#tomorrowWhen').value.trim(),where:$('#tomorrowWhere').value.trim(),createdAt:now()}; save(data); renderTomorrow(); showToast('Amanhã tem uma única intenção guardada.'); });
   function renderTomorrow() {
     const value=memory().tomorrow;

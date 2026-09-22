@@ -3,6 +3,7 @@ import { $, $$, escapeHtml, showToast, motion } from './ui.js';
 import { initReading } from './reading.js';
 import { initAI } from './ai.js';
 import { initExecutive } from './executive.js';
+import { latestItemFeedback, deferRecentlyNotFit, localAction } from './focus-core.js';
 
 if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('/service-worker.js').catch(() => {}));
 
@@ -184,6 +185,41 @@ $('#addIdea').addEventListener('click',()=> {
   input.value=''; save(); renderIdeas(); renderPreview(); invalidateSuggestion(); input.focus(); showToast('Guardado. Sem cobrança.');
 });
 $('#ideaInput').addEventListener('keydown',e=> {if(e.key==='Enter') $('#addIdea').click();});
+$('#exportBackup').addEventListener('click', () => {
+  try {
+    const backup = storage.createBackup();
+    const file = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(file);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `foco-ai-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    $('#backupStatus').textContent = 'Backup baixado para este aparelho.';
+  } catch {
+    $('#backupStatus').textContent = 'Não consegui criar o backup agora. Tente novamente.';
+  }
+});
+$('#chooseBackup').addEventListener('click', () => $('#backupFile').click());
+$('#backupFile').addEventListener('change', async event => {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  try {
+    if (file.size > 5_000_000) throw new Error('O arquivo é grande demais para importar.');
+    const backup = JSON.parse(await file.text());
+    if (!confirm('Importar este backup vai substituir os dados do Foco salvos neste navegador. Se quiser guardá-los, baixe um backup antes. Continuar?')) return;
+    storage.restoreBackup(backup);
+    $('#backupStatus').textContent = 'Backup importado. Atualizando o Foco…';
+    showToast('Seus dados foram restaurados.');
+    setTimeout(() => window.location.reload(), 500);
+  } catch (error) {
+    $('#backupStatus').textContent = error instanceof SyntaxError
+      ? 'Não consegui ler esse arquivo. Escolha um backup JSON do Foco.'
+      : error.message || 'Não consegui importar o backup. Os dados atuais foram mantidos.';
+  } finally {
+    event.target.value = '';
+  }
+});
 const quickCaptureDialog = $('#quickCaptureDialog');
 function closeQuickCapture() {
   if (quickCaptureDialog.open) quickCaptureDialog.close();
@@ -236,22 +272,28 @@ $$('.filter').forEach(btn=>btn.addEventListener('click',()=> {
 }));
 function invalidateSuggestion() { if(!$('#suggestionPanel').classList.contains('hidden')) renderSuggestion(); }
 function makeSuggestion() {
-  const available = ideas.filter(i=>['in_progress','active','start'].includes(i.state));
+  const sessionHistory = storage.get('executive_memory',{sessions:[]})?.sessions || [];
+  const available = deferRecentlyNotFit(ideas.filter(i=>['in_progress','active','start'].includes(i.state)),sessionHistory);
   const minutes = {low:2,normal:5,high:10}[energy];
   const preferredEfforts = { low:['light','regular','deep'], normal:['regular','light','deep'], high:['deep','regular','light'] }[energy];
   if(available.length) {
     const ordered = preferredEfforts.flatMap(effort => available.filter(item => item.effort === effort));
     const item=ordered[suggestionIndex % ordered.length];
+    const previousFeedback=latestItemFeedback(sessionHistory,item.id);
     const needsSmallerStart = energy === 'low' && item.effort !== 'light';
     const defaultTask = item.category === 'reading'
       ? `Abra ${item.text} na página ${Math.max(1, item.book.currentPage + 1)} e leia um parágrafo.`
       : item.category === 'game' && item.game.progress
         ? `Abra ${item.text} e continue de onde parou: ${item.game.progress}.`
         : energy === 'high' ? `Comece uma sessão curta de ${item.text}.` : `Separe o que você precisa para começar: ${item.text}.`;
-    const task = needsSmallerStart
+    const task = previousFeedback?.feedbackReason === 'too_big'
+      ? localAction(item,energy,minutes,previousFeedback).action
+      : needsSmallerStart
       ? `Só deixe ${item.text} pronto para depois.`
       : item.nextStep || defaultTask;
-    const reason = needsSmallerStart
+    const reason = previousFeedback?.feedbackReason === 'too_big'
+      ? 'Da última vez, esse começo pareceu grande. Deixei a primeira ação menor.'
+      : needsSmallerStart
       ? 'Você marcou energia baixa. Não precisa fazer agora; só facilite o começo de depois.'
       : energy === 'low'
         ? 'Você marcou energia baixa. Escolhi algo que cabe num começo leve.'

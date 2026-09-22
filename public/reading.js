@@ -2,9 +2,10 @@ import { storage } from './storage.js';
 import { $, showToast, requestAI, busy, escapeHtml } from './ui.js';
 
 export function initReading() {
-  let selectedBookId = storage.get('selected_reading_book', '');
+  const savedTimer = storage.get('reading_timer', null);
+  let selectedBookId = typeof savedTimer?.bookId === 'string' ? savedTimer.bookId : storage.get('selected_reading_book', '');
   let timer = null;
-  let phase = 'focus';
+  let phase = savedTimer?.phase === 'break' ? 'break' : 'focus';
   let revision = 0;
   let remainingSeconds = 0;
   let timerEndsAt = 0;
@@ -55,6 +56,25 @@ export function initReading() {
     return `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
   }
 
+  function announce(message) {
+    $('#readingStatusAnnounce').textContent = message;
+  }
+
+  function persistTimer(status) {
+    if (!selectedBookId) return storage.remove('reading_timer');
+    const data = {
+      version: 1,
+      bookId: selectedBookId,
+      phase,
+      status,
+      durationMinutes: Number($('#readingDuration').value),
+      updatedAt: new Date().toISOString()
+    };
+    if (status === 'running') data.timerEndsAt = timerEndsAt;
+    if (status === 'paused') data.remainingSeconds = remainingSeconds;
+    storage.set('reading_timer', data);
+  }
+
   function finishPhase() {
     timer = null;
     remainingSeconds = 0;
@@ -63,15 +83,20 @@ export function initReading() {
       window.dispatchEvent(new CustomEvent('foco:reading-session-complete', { detail: { id: crypto.randomUUID() } }));
       phase = 'break';
       $('#sessionStatus').textContent = 'Pomodoro concluído. Se quiser, faça uma pausa de 5 minutos.';
+      announce('Pomodoro concluído. Se quiser, faça uma pausa de 5 minutos.');
+      persistTimer('ready');
     } else {
       phase = 'focus';
       $('#sessionStatus').textContent = 'Pausa concluída. Você pode começar outro Pomodoro quando quiser.';
+      announce('Pausa concluída. Você pode começar outro Pomodoro quando quiser.');
+      storage.remove('reading_timer');
     }
     renderPomodoro();
     showToast($('#sessionStatus').textContent);
   }
 
   function startClock(seconds) {
+    const wasPaused = paused;
     remainingSeconds = seconds;
     timerEndsAt = Date.now() + seconds * 1000;
     paused = false;
@@ -84,7 +109,24 @@ export function initReading() {
       }
     };
     tick();
-    if (remainingSeconds) timer = setInterval(tick, 250);
+    if (remainingSeconds) {
+      timer = setInterval(tick, 1000);
+      persistTimer('running');
+      announce(wasPaused ? 'Sessão retomada.' : phase === 'focus' ? `Pomodoro de ${$('#readingDuration').value} minutos iniciado.` : 'Pausa de 5 minutos iniciada.');
+    }
+    renderPomodoro();
+  }
+
+  function pauseClock(message = '') {
+    if (!timer) return;
+    remainingSeconds = Math.max(0, Math.ceil((timerEndsAt - Date.now()) / 1000));
+    clearInterval(timer);
+    timer = null;
+    if (!remainingSeconds) return finishPhase();
+    paused = true;
+    $('#sessionStatus').textContent = message || `Sessão pausada · ${formatTime(remainingSeconds)} restantes`;
+    announce(message || 'Sessão pausada. Você pode retomar quando quiser.');
+    persistTimer('paused');
     renderPomodoro();
   }
 
@@ -94,8 +136,51 @@ export function initReading() {
     paused = false;
     remainingSeconds = 0;
     phase = 'focus';
+    storage.remove('reading_timer');
     $('#sessionStatus').textContent = message;
+    announce(message);
     renderPomodoro();
+  }
+
+  function restoreTimer() {
+    const saved = storage.get('reading_timer', null);
+    if (!saved || saved.version !== 1 || saved.bookId !== selectedBookId || !books().some(item => item.id === saved.bookId)) {
+      if (saved) storage.remove('reading_timer');
+      return;
+    }
+    phase = saved.phase === 'break' ? 'break' : 'focus';
+    if (saved.status === 'ready' && phase === 'break') {
+      if ([5, 10, 15, 25].includes(Number(saved.durationMinutes))) $('#readingDuration').value = String(saved.durationMinutes);
+      $('#sessionStatus').textContent = 'Pomodoro concluído. Se quiser, faça uma pausa de 5 minutos.';
+      announce('Pomodoro concluído. Se quiser, faça uma pausa de 5 minutos.');
+      renderPomodoro();
+      return;
+    }
+    if (saved.status === 'paused') {
+      if ([5, 10, 15, 25].includes(Number(saved.durationMinutes))) $('#readingDuration').value = String(saved.durationMinutes);
+      remainingSeconds = Math.max(0, Math.ceil(Number(saved.remainingSeconds) || 0));
+      if (remainingSeconds) {
+        paused = true;
+        $('#sessionStatus').textContent = `Leitura pausada · ${formatTime(remainingSeconds)} restantes. Toque em Retomar quando quiser.`;
+        announce('Sua leitura está pausada. Você pode retomar quando quiser.');
+        renderPomodoro();
+      } else {
+        finishPhase();
+      }
+      return;
+    }
+    if (saved.status === 'running' && Number.isFinite(Number(saved.timerEndsAt))) {
+      if ([5, 10, 15, 25].includes(Number(saved.durationMinutes))) $('#readingDuration').value = String(saved.durationMinutes);
+      const remaining = Math.ceil((Number(saved.timerEndsAt) - Date.now()) / 1000);
+      if (remaining > 0) {
+        startClock(remaining);
+      } else {
+        finishPhase();
+      }
+      return;
+    }
+    storage.remove('reading_timer');
+    phase = 'focus';
   }
 
   function renderBook() {
@@ -116,6 +201,8 @@ export function initReading() {
   function renderLibrary() {
     const list = books();
     if (!list.length) {
+      if (timer || paused) stopClock('O livro não está mais na lista. A sessão foi encerrada.');
+      else storage.remove('reading_timer');
       $('#readingLibraryContent').innerHTML = '<p class="muted small">Quando um livro estiver em Minhas coisas, ele aparecerá aqui.</p>';
       selectedBookId = '';
       renderBook();
@@ -128,7 +215,7 @@ export function initReading() {
     const notes = Array.isArray(item.book?.notes) ? item.book.notes.length : 0;
     $('#readingLibraryContent').innerHTML = `<div class="stack"><label for="readingLibrarySelect">Livro selecionado</label><select id="readingLibrarySelect">${list.map(item => `<option value="${escapeHtml(item.id)}" ${item.id === selectedBookId ? 'selected' : ''}>${escapeHtml(item.text)}</option>`).join('')}</select><p class="muted small">${total ? `Página ${page} de ${total}` : page ? `Você parou na página ${page}` : 'Página ainda não registrada'} · ${notes === 1 ? '1 anotação' : `${notes} anotações`}</p><div class="button-row"><button class="secondary-btn" id="registerSelectedReading">Registrar leitura</button><button class="text-btn" id="viewSelectedNotes">Ver anotações</button></div></div>`;
     $('#readingLibrarySelect').addEventListener('change', event => {
-      if (timer || paused) stopClock('Sessão encerrada ao trocar de livro. Você pode retomá-la quando quiser.');
+      if (timer || paused || phase === 'break') stopClock('Sessão encerrada ao trocar de livro. Você pode retomá-la quando quiser.');
       selectedBookId = event.target.value;
       storage.set('selected_reading_book', selectedBookId);
       renderLibrary();
@@ -169,18 +256,16 @@ export function initReading() {
   });
   $('#pauseReadingSession').addEventListener('click', () => {
     if (paused) return startClock(remainingSeconds);
-    if (!timer) return;
-    remainingSeconds = Math.max(0, Math.ceil((timerEndsAt - Date.now()) / 1000));
-    clearInterval(timer);
-    timer = null;
-    paused = true;
-    $('#sessionStatus').textContent = `Sessão pausada · ${formatTime(remainingSeconds)} restantes`;
-    renderPomodoro();
+    pauseClock();
   });
   $('#stopReadingSession').addEventListener('click', () => stopClock());
   $('#readingDuration').addEventListener('change', renderPomodoro);
 
   window.addEventListener('foco:ideas-changed', renderLibrary);
-  window.addEventListener('pagehide', stopVoice);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') pauseClock('Leitura pausada ao sair do app. Toque em Retomar quando voltar.');
+  });
+  window.addEventListener('pagehide', () => { pauseClock('Leitura pausada. Toque em Retomar quando voltar.'); stopVoice(); });
   renderLibrary();
+  restoreTimer();
 }

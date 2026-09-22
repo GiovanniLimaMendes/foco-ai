@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { award, orderedIdeas, localAction, earnedAchievements } from '../public/focus-core.js';
+import { award, orderedIdeas, localAction, latestItemFeedback, deferRecentlyNotFit, earnedAchievements } from '../public/focus-core.js';
 
 test('XP só recompensa o mesmo evento uma vez', () => {
   const first = award({ total:0, events:[] }, 'session-1', 10, 'start');
@@ -39,4 +39,19 @@ test('sugestão local retoma o ponto de um jogo', () => {
 test('sugestão local reutiliza o último ponto registrado', () => {
   const action = localAction({ text:'Projeto pessoal', state:'in_progress', effort:'regular', category:'general', lastStop:'parei na tela de login' }, 'normal', 10);
   assert.match(action.action, /parei na tela de login/);
+});
+
+test('feedback de que o passo foi grande reduz a próxima ação', () => {
+  const item = { id:'book', text:'O Hobbit', category:'reading', book:{currentPage:34} };
+  const feedback = { itemId:'book', feedback:'somewhat', feedbackReason:'too_big' };
+  const action = localAction(item, 'normal', 10, latestItemFeedback([feedback], 'book'));
+  assert.match(action.action, /página 35 e leia uma frase/);
+  assert.match(action.reason, /começo pareceu grande/);
+});
+
+test('atividade marcada como incompatível perde prioridade, mas continua disponível sozinha', () => {
+  const items = [{id:'a'}, {id:'b'}];
+  const feedback = [{itemId:'a',feedback:'no',feedbackReason:'not_fit'}];
+  assert.deepEqual(deferRecentlyNotFit(items, feedback), [{id:'b'}]);
+  assert.deepEqual(deferRecentlyNotFit([{id:'a'}], feedback), [{id:'a'}]);
 });
