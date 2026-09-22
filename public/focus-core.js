@@ -19,7 +19,7 @@ export function localAction(item, energy, minutes) {
   const point = item.category === 'reading' && item.book?.currentPage ? `Abra na página ${item.book.currentPage + 1} e leia um parágrafo.`
     : item.category === 'game' && item.game?.progress ? `Abra e continue de onde parou: ${item.game.progress}.`
     : item.category === 'series' && item.media?.progress ? `Abra e continue de onde parou: ${item.media.progress}.`
-    : item.nextStep || `Deixe o material de ${item.text} ao seu alcance.`;
+    : item.nextStep || item.lastStop || `Deixe o material de ${item.text} ao seu alcance.`;
   const smaller = energy === 'low' && item.effort !== 'light' ? `Só prepare ${item.text} para depois.` : point;
   return { title:item.text, action:smaller, reason:`Cabe em cerca de ${minutes} minutos. Você pode parar quando quiser.` };
 }

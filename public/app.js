@@ -88,7 +88,7 @@ function renderIdeas() {
   $('#ideasGrid').innerHTML = visible.map(i=>`<article class="idea-card">
     <button class="delete" data-delete="${escapeHtml(i.id)}" aria-label="Remover ${escapeHtml(i.text)}">×</button>
     <div class="idea-type">${typeLabel(i.type)} · ${categories[i.category]}</div><h3>${escapeHtml(i.text)}</h3>
-    <p>${i.lastInteraction && Number.isFinite(Date.parse(i.lastInteraction)) ? 'Último começo: '+new Date(i.lastInteraction).toLocaleDateString('pt-BR') : 'Um interesse seu. Sem pressa.'}</p>
+    <p>${i.lastStop ? `Você parou em: ${escapeHtml(i.lastStop)}` : i.lastInteraction && Number.isFinite(Date.parse(i.lastInteraction)) ? 'Último começo: '+new Date(i.lastInteraction).toLocaleDateString('pt-BR') : 'Um interesse seu. Sem pressa.'}</p>
     <div class="idea-controls"><label>Estado<select data-state="${escapeHtml(i.id)}">${Object.entries(states).map(([v,l])=>`<option value="${v}" ${v === i.state ? 'selected':''}>${l}</option>`).join('')}</select></label>
     <label>Combina mais com<select data-effort="${escapeHtml(i.id)}"><option value="light" ${i.effort === 'light' ? 'selected':''}>Energia baixa · algo leve</option><option value="regular" ${i.effort === 'regular' ? 'selected':''}>Energia média</option><option value="deep" ${i.effort === 'deep' ? 'selected':''}>Energia alta · mais fôlego</option></select></label>
     <label>Tipo de coisa<select data-category="${escapeHtml(i.id)}">${Object.entries(categories).map(([v,l])=>`<option value="${v}" ${v === i.category ? 'selected':''}>${l}</option>`).join('')}</select></label>

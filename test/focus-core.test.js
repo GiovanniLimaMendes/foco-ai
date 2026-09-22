@@ -19,3 +19,8 @@ test('sugestão local retoma o ponto de um jogo', () => {
   const action = localAction({ text:'Jogo', category:'game', game:{progress:'capítulo 3'}, state:'start' }, 'normal', 10);
   assert.match(action.action, /capítulo 3/);
 });
+
+test('sugestão local reutiliza o último ponto registrado', () => {
+  const action = localAction({ text:'Projeto pessoal', state:'in_progress', effort:'regular', category:'general', lastStop:'parei na tela de login' }, 'normal', 10);
+  assert.match(action.action, /parei na tela de login/);
+});
